@@ -1,0 +1,12 @@
+Clone the vcpkg into the project directory:
+
+- git clone https://github.com/Microsoft/vcpkg.git
+
+Run the bootstrap script to build vcpkg
+
+- ./vcpkg/bootstrap-vcpkg.sh
+
+Install libraries for your project
+
+- ./vcpkg install [packages to install]
+  - jsoncpp
