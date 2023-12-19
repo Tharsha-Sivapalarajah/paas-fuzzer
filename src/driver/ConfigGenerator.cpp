@@ -4,18 +4,32 @@
 #include <iomanip>
 #include <filesystem>
 
-#include <JsonFileHandler.h>
+#include "JsonFileHandler.h"
+#include "Patch.h"
+
+using namespace driver;
 
 int main()
 {
-    JsonFileHandler fileHandler("../../data/input.json");
+    // Your main program logic here
+    JsonFileHandler fileHandler;
 
     // Read JSON file
     Json::Value originalData;
-    fileHandler.readJsonFile(originalData);
+    fileHandler.readJsonFile(originalData, "../data/input.json");
 
     Json::Value configFile = originalData;
-    fileHandler.createConfigFile(configFile);
+    std::vector<Patch> patches = {};
+    fileHandler.createConfigFile(configFile, patches);
 
+    for (Patch patch : patches)
+    {
+        std::vector<std::string> patchKey = patch.getKeys();
+        for (const auto &element : patchKey)
+        {
+            std::cout << element << " ";
+        }
+        std::cout << std::endl;
+    }
     return 0;
 }
