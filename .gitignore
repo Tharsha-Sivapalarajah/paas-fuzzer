@@ -3,3 +3,7 @@
 /vcpkg/
 
 /data/
+
+/Monitoring/venv/
+
+/.vscode/
