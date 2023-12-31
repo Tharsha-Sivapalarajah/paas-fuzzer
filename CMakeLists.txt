@@ -13,11 +13,20 @@ add_executable(ConfigGenerator
                 )
 
 # Specify include directories
-target_include_directories(ConfigGenerator PRIVATE "./vcpkg/installed/x64-linux/include" PRIVATE include/driver)
+target_include_directories(ConfigGenerator 
+    PRIVATE 
+    "./vcpkg/installed/x64-linux/include" 
+    include/driver
+    include/scheduler
+)
 
 # Specify library directories
 link_directories("./vcpkg/installed/x64-linux/lib")
 
 # Link against the jsoncpp library
-target_link_libraries(ConfigGenerator PRIVATE /home/kabilan/Desktop/FYP/implementation/implementation-2/paas-fuzzer/vcpkg/installed/x64-linux/lib/libjsoncpp.a)
+target_link_libraries(ConfigGenerator 
+    PRIVATE
+    /home/kabilan/Desktop/FYP/implementation/implementation-2/paas-fuzzer/vcpkg/installed/x64-linux/lib/libjsoncpp.a
+    /home/kabilan/Desktop/FYP/implementation/implementation-2/paas-fuzzer/vcpkg/installed/x64-linux/lib/libkubernetes.a
+)
 

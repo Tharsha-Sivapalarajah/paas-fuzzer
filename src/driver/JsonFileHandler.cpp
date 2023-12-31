@@ -1,14 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <json/json.h>
-#include <iomanip>
-#include <cstdlib>
-#include <ctime>
-#include <algorithm>
-
 #include "JsonFileHandler.h"
-#include "Patch.h"
-#include "constant.h"
 
 namespace driver
 {
@@ -48,8 +38,14 @@ namespace driver
         {
             for (std::vector<std::string> patchKey : patchableKeys)
             {
-                Patch patch(patchKey, 0.0);
-                patches.push_back(patch);
+                if (!patchKey.empty())
+                {
+                    std::string value = patchKey.back();
+                    patchKey.pop_back();
+
+                    Patch patch(patchKey, 0.0, value);
+                    patches.push_back(patch);
+                }
             }
             return true;
         }
@@ -85,6 +81,8 @@ namespace driver
                 {
                     if (std::find(driver::forbiddenPatchKeyStrings.begin(), driver::forbiddenPatchKeyStrings.end(), currentKeys[currentKeys.size() - 1]) == driver::forbiddenPatchKeyStrings.end())
                     { // not found
+                        jsonObject[currentKey] = jsonObject[currentKey][0];
+                        currentKeys.push_back(jsonObject[currentKey].asString());
                         patchableKeys.push_back(currentKeys);
                     }
                 }
@@ -106,10 +104,12 @@ namespace driver
                         currentKeys.push_back(std::to_string(i + 1));
                         if (handleJsonObj(arrayValue, currentKeys, currentKeys.size(), patchableKeys))
                         {
-                            std::cout << jsonObject << std::endl;
+                            // std::cout << jsonObject << std::endl;
 
                             if (std::find(driver::forbiddenPatchKeyStrings.begin(), driver::forbiddenPatchKeyStrings.end(), currentKeys[currentKeys.size() - 1]) == driver::forbiddenPatchKeyStrings.end())
                             { // not found
+                                jsonObject[i] = jsonObject[i][0];
+                                currentKeys.push_back(jsonObject[i].asString());
                                 patchableKeys.push_back(currentKeys);
                             }
                         }
@@ -127,30 +127,100 @@ namespace driver
         return std::nullopt;
     }
 
-    //     bool writeJsonFile(const Json::Value &jsonData, const std::string &outputFilePath)
-    //     {
-    //         std::ofstream output_file(outputFilePath);
-    //         if (!output_file.is_open())
-    //         {
-    //             std::cerr << "Error opening output JSON file." << std::endl;
-    //             return false;
-    //         }
+    bool JsonFileHandler::writeJsonFile(const Json::Value &jsonData, const std::string &outputFilePath)
+    {
+        std::ofstream output_file(outputFilePath);
+        if (!output_file.is_open())
+        {
+            std::cerr << "Error opening output JSON file." << std::endl;
+            return false;
+        }
 
-    //         // Use setw from iomanip for formatting
-    //         output_file << std::setw(4) << jsonData << std::endl;
-    //         output_file.close();
+        // Use setw from iomanip for formatting
+        output_file << std::setw(4) << jsonData << std::endl;
+        output_file.close();
 
-    //         return true;
-    //     }
+        return true;
+    }
 
-    // private:
-    //     int generateRandomNumber(int minValue, int maxValue)
-    //     {
-    //         // Seed the random number generator with the current time
-    //         std::srand(static_cast<unsigned>(std::time(nullptr)));
+    int generateRandomNumber(int minValue, int maxValue)
+    {
+        // Seed the random number generator with the current time
+        std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    //         // Generate a random number between minValue and maxValue (inclusive)
-    //         return std::rand() % (maxValue - minValue + 1) + minValue;
-    //     }
+        // Generate a random number between minValue and maxValue (inclusive)
+        return std::rand() % (maxValue - minValue + 1) + minValue;
+    }
+
+    void JsonFileHandler::jsoncppToCJSON(const Json::Value &jsonValue, cJSON *cjsonObject) const
+    {
+        // Iterate through JSON object
+        std::vector<std::string> keys = jsonValue.getMemberNames();
+        for (std::string &key : keys)
+        {
+            const Json::Value &value = jsonValue[key];
+            // Determine the type of JSON value and convert to CJSON
+            if (value.isObject())
+            {
+                // Recursive call for nested objects
+                cJSON *nestedObject = cJSON_CreateObject();
+                cJSON_AddItemToObject(cjsonObject, key.c_str(), nestedObject);
+                jsoncppToCJSON(value, nestedObject);
+            }
+            else if (value.isArray())
+            {
+                cJSON *array = cJSON_CreateArray();
+                cJSON_AddItemToObject(cjsonObject, key.c_str(), array);
+
+                for (const auto &element : value)
+                {
+                    if (element.isObject())
+                    {
+                        cJSON *objectItem = cJSON_CreateObject();
+                        jsoncppToCJSON(element, objectItem);
+                        cJSON_AddItemToArray(array, objectItem);
+                    }
+                    else
+                    {
+                        cJSON *value = cJSON_CreateString(element.asCString());
+                        cJSON_AddItemToArray(array, value);
+                    }
+                }
+            }
+            else if (value.isString())
+            {
+                cJSON_AddStringToObject(cjsonObject, key.c_str(), value.asCString());
+            }
+            else if (value.isInt())
+            {
+                cJSON_AddNumberToObject(cjsonObject, key.c_str(), value.asInt());
+            }
+            else if (value.isDouble())
+            {
+                cJSON_AddNumberToObject(cjsonObject, key.c_str(), value.asDouble());
+            }
+            else if (value.isBool())
+            {
+                cJSON_AddBoolToObject(cjsonObject, key.c_str(), value.asBool());
+            }
+        }
+    }
+
+    cJSON *JsonFileHandler::generateCJSON(const Json::Value &jsonFile) const
+    {
+        cJSON *cjsonObject = cJSON_CreateObject();
+
+        jsoncppToCJSON(jsonFile, cjsonObject);
+
+        return cjsonObject;
+    }
+
+    void JsonFileHandler::printCJSON(const cJSON *cJsonObject)
+    {
+        char *cjsonStr = cJSON_Print(cJsonObject);
+        std::cout << "CJSON representation:\n"
+                  << cjsonStr << std::endl;
+        cJSON_free(cjsonStr);
+    }
 
 };

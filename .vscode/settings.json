@@ -55,6 +55,16 @@
         "chrono": "cpp",
         "codecvt": "cpp",
         "ratio": "cpp",
-        "optional": "cpp"
-    }
+        "optional": "cpp",
+        "k8sapiwrapper.h": "c",
+        "kube_config.h": "c",
+        "apiclient.h": "c",
+        "errno.h": "c",
+        "stdio.h": "c",
+        "*.c": "c",
+        "*.cpp": "cpp",
+        "complex": "cpp",
+        "cinttypes": "cpp"
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
 }
