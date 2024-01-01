@@ -1,15 +1,8 @@
-#include <iostream>
-#include <fstream>
-#include <json/json.h>
-#include <iomanip>
-#include <cstdlib>
-#include <ctime>
-
 #include "Patch.h"
 
 namespace driver
 {
-    Patch::Patch(std::vector<std::string> keys, double score) : keys(keys), score(score) {}
+    Patch::Patch(std::vector<std::string> keys, double score, std::string value) : keys(keys), score(score), value(value) {}
 
     std::vector<std::string> Patch::getKeys() const
     {
@@ -21,9 +14,18 @@ namespace driver
         return score;
     }
 
+    std::string Patch::getValue() const
+    {
+        return value;
+    }
+
     bool Patch::setScore(double newScore)
     {
         score = newScore;
         return true;
+    }
+
+    std::string Patch ::getStringFromPatches(std::vector<Patch>)
+    {
     }
 }

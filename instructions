@@ -10,3 +10,8 @@ Install libraries for your project
 
 - ./vcpkg install [packages to install]
   - jsoncpp
+
+Install C client for Kubernetes
+
+- ./vcpkg install kubernetes:<triplet>
+  - ./vcpkg install kubernetes:x64-linux

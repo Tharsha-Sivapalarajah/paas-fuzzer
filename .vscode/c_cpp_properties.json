@@ -3,9 +3,9 @@
             {
                 "name": "Linux",
                 "includePath": [
-                    "${workspaceFolder}/**",
-                    "${workspaceFolder}/vcpkg/installed/x64-linux/include",
-                    "${workspaceFolder}/include/driver"
+                    "${workspaceFolder}/include/**",
+                    "/home/kabilan/Desktop/FYP/implementation/implementation-2/paas-fuzzer/vcpkg/installed/x64-linux/include/**",
+                    "/usr/local/include/**"
                 ],
                 "defines": [],
             "cStandard": "c17",
