@@ -14,14 +14,11 @@ namespace driver
     public:
         Patch(std::vector<std::string> keys, double score, std::string value);
 
-        static std::string Patch::getStringFromPatches(std::vector<Patch>)
-        {
-        }
-
         // getters
         std::vector<std::string> getKeys() const;
         double getScore() const;
         std::string getValue() const;
+        std::string getStringFromPatch() const;
 
         // setters
         bool setScore(double newScore);

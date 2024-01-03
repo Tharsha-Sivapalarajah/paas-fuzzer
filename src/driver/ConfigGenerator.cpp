@@ -6,8 +6,14 @@
 
 #include "JsonFileHandler.h"
 #include "Patch.h"
+#include "ConfigGenerator.h"
 
 using namespace driver;
+
+namespace driver
+{
+
+}
 
 int main()
 {
@@ -21,13 +27,16 @@ int main()
 
     cJSON *value = fileHandler.generateCJSON(originalData);
     // cJSON *name = cJSON_GetObjectItemCaseSensitive(value, "apiVersion");
-    cJSON_Delete(value);
+    // cJSON_Delete(value);
     // cJSON_free(name);
     // char *val = cJSON_Print(name);
     // printf("%s\n", val);
-    // Json::Value configFile = originalData;
-    // std::vector<Patch> patches = {};
-    // fileHandler.createConfigFile(configFile, patches);
+    Json::Value configFile = originalData;
+    std::vector<Patch> patches = {};
+    fileHandler.createConfigFile(configFile, patches);
+
+    std::string patchPatch="";
+    // Patch::getStringFromPatches(patches,);
 
     // fileHandler.writeJsonFile(configFile, "../data/output.json");
 
