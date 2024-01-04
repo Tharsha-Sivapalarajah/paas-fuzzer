@@ -4,6 +4,10 @@
 #include <iomanip>
 #include <filesystem>
 #include <thread>
-#include "scheduler/ClusterAccess.h"
+#include "ClusterAccess.h"
 
 #include "JsonFileHandler.h"
+
+namespace driver
+{
+}

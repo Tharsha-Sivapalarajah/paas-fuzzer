@@ -2,36 +2,39 @@
 
 using namespace driver;
 
-bool compareByFloatValue(const Patch &obj1, const Patch &obj2)
+bool compareByFloatValue(const driver::Patch &obj1, const driver::Patch &obj2)
 {
     return obj1.getScore() > obj2.getScore();
 }
 
-void updatePatches(std::vector<Patch> *patches, scheduler::ClusterAccess *clusterAccess, cJSON *initialConfig)
+void updatePatches(std::vector<driver::Patch> *patches, scheduler::ClusterAccess *clusterAccess, cJSON *initialConfig)
 {
     while (true)
     {
-        for (Patch &patch : *patches)
-        {
-            clusterAccess->patch(initialConfig, NULL, "default", patch);
-        }
+        // for (driver::Patch patch : *patches)
+        // {
+        // std::cout << patch.getValue() << std::endl;
+        clusterAccess->patch(initialConfig, NULL, "default", (*patches)[2]);
+        // }
         std::sort((*patches).begin(), (*patches).end(), compareByFloatValue);
+        break;
     }
 }
 
 int main()
 {
-    JsonFileHandler fileHandler;
+    driver::JsonFileHandler fileHandler;
 
     // Read the initila JSON input file
     Json::Value originalData;
     fileHandler.readJsonFile(originalData, "../../../data/input.json");
 
     Json::Value configFile = originalData;
-    std::vector<Patch> patches = {};
+    std::vector<driver::Patch> patches = {};
     fileHandler.createConfigFile(configFile, patches);
 
     cJSON *initialSetup = fileHandler.generateCJSON(configFile);
+
     scheduler::ClusterAccess clusterAccess;
     if (clusterAccess.create(
             initialSetup,
@@ -42,14 +45,15 @@ int main()
     }
     else
     {
-        return 1;
+        // return 1;
     }
 
-    std::thread myThread(updatePatches);
+    std::thread myThread(updatePatches, &patches, &clusterAccess, initialSetup);
 
     // Do some work in the main thread
 
     myThread.join(); // Wait for the thread to finish
 
+    cJSON_Delete(initialSetup);
     return 0;
 }
