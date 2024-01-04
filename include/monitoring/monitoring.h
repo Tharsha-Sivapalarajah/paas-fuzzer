@@ -1,19 +1,7 @@
 #pragma once
 
-extern "C"
-{
-#include <config/kube_config.h>
-#include <include/apiClient.h>
-#include <api/CoreV1API.h>
-#include <api/AppsV1API.h>
-#include <model/v1_object_meta.h>
-#include <model/object.h>
-#include <external/cJSON.h>
-#include <model/v1_pod.h>
-#include <model/v1_deployment.h>
-}
-
-#include <Patch.h>
+#include "ClusterAccess.h"
+#include "Patch.h"
 
 namespace monitoring
 {

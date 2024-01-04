@@ -8,38 +8,41 @@ namespace driver
     {
         return keys;
     }
-    /*
-{
-    "spec":
+
+    bool Patch::isInteger(const std::string &s) const
+    {
+        for (char c : s)
         {
-            "replicas":3
-        }
-}
-
-{\"spec\":{\"replicas\":3}}
-*/
-
-    bool isInteger(const std::string& s) {
-        for (char c : s) {
-            if (!std::isdigit(c)) {
+            if (!std::isdigit(c))
+            {
                 return false;
             }
         }
         return true;
     }
 
-    std::string Patch::getStringFromPatch() const {
-        std::vector<std::string> keys = this->getKeys();
-        std::string finalValue = keys.back();
-        keys.pop_back();
-        for (const std::string &pathKey : keys) {
-            if (isInteger(pathKey)) {
-                pathKey+"\":";
-            } else {
-            }
-            std::cout << "{\""+pathKey+"\":" << std::endl;
+    std::string Patch::getPatchValue() const
+    {
+        if (isInteger(value))
+        {
+            return value;
         }
-        return "a";
+        else
+        {
+            return "\"" + value + "\"";
+        }
+    }
+
+    std::string Patch::getPatchPathString() const
+    {
+        std::vector<std::string> keys = this->getKeys();
+        std::string finalValue = this->getValue();
+        std::string outputPath = "";
+        for (const std::string &pathKey : keys)
+        {
+            outputPath += ("/" + pathKey);
+        }
+        return outputPath;
     }
 
     double Patch::getScore() const

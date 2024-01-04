@@ -18,16 +18,18 @@ namespace driver
         std::vector<std::string> getKeys() const;
         double getScore() const;
         std::string getValue() const;
-        std::string getStringFromPatch() const;
+        std::string getPatchPathString() const;
+        std::string getPatchValue() const;
 
         // setters
         bool setScore(double newScore);
 
-        std::vector<std::string> keys;
-
     private:
+        bool isInteger(const std::string &s) const;
+
         // members
         double score;
         std::string value;
+        std::vector<std::string> keys;
     };
 }
