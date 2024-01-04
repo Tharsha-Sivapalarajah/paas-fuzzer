@@ -31,7 +31,7 @@ namespace driver
 
             Json::Value &element = configJsonData[currentKey];
 
-            handleJsonObj(element, keys, keys.size(), patchableKeys);
+            int response = handleJsonObj(element, keys, keys.size(), patchableKeys, configJsonData);
         }
 
         if (patchableKeys.size() > 0)
@@ -60,7 +60,7 @@ namespace driver
         // }
     }
 
-    std::optional<std::vector<std::string>> JsonFileHandler::handleJsonObj(Json::Value &jsonObject, std::vector<std::string> keys, std::size_t keysSize, std::vector<std::vector<std::string>> &patchableKeys)
+    int JsonFileHandler::handleJsonObj(Json::Value &jsonObject, std::vector<std::string> keys, std::size_t keysSize, std::vector<std::vector<std::string>> &patchableKeys, Json::Value &parentJson)
     {
         if (jsonObject.isObject())
         {
@@ -77,17 +77,9 @@ namespace driver
                 // std::cout << element << std::endl;
                 currentKeys.push_back(currentKey);
 
-                if (handleJsonObj(element, currentKeys, keys.size(), patchableKeys).has_value())
-                {
-                    if (std::find(driver::forbiddenPatchKeyStrings.begin(), driver::forbiddenPatchKeyStrings.end(), currentKeys[currentKeys.size() - 1]) == driver::forbiddenPatchKeyStrings.end())
-                    { // not found
-                        jsonObject[currentKey] = jsonObject[currentKey][0];
-                        currentKeys.push_back(jsonObject[currentKey].asString());
-                        patchableKeys.push_back(currentKeys);
-                    }
-                }
+                int response = handleJsonObj(element, currentKeys, keys.size(), patchableKeys, jsonObject);
             }
-            return std::nullopt;
+            return 0;
         }
         else if (jsonObject.isArray())
         {
@@ -102,29 +94,28 @@ namespace driver
                     {
                         std::vector<std::string> currentKeys = keys;
                         currentKeys.push_back(std::to_string(i + 1));
-                        if (handleJsonObj(arrayValue, currentKeys, currentKeys.size(), patchableKeys))
-                        {
-                            // std::cout << jsonObject << std::endl;
-
-                            if (std::find(driver::forbiddenPatchKeyStrings.begin(), driver::forbiddenPatchKeyStrings.end(), currentKeys[currentKeys.size() - 1]) == driver::forbiddenPatchKeyStrings.end())
-                            { // not found
-                                jsonObject[i] = jsonObject[i][0];
-                                currentKeys.push_back(jsonObject[i].asString());
-                                patchableKeys.push_back(currentKeys);
-                            }
-                        }
+                        int response = handleJsonObj(arrayValue, currentKeys, currentKeys.size(), patchableKeys, jsonObject);
                     }
                 }
             }
 
             if (isPatch == true)
             {
-                return keys;
+                if (std::find(driver::forbiddenPatchKeyStrings.begin(), driver::forbiddenPatchKeyStrings.end(), keys[keys.size() - 1]) == driver::forbiddenPatchKeyStrings.end())
+                { // not found
+                    for (int i = 0; i < jsonObject.size(); i++)
+                    {
+                        std::vector<std::string> currentKeys = keys;
+                        Json::Value arrayValue = jsonObject[i];
+                        currentKeys.push_back(jsonObject[i].asString());
+                        patchableKeys.push_back(currentKeys);
+                    }
+                }
+                parentJson[keys.back()] = jsonObject[0];
+                return 1;
             }
-
-            return std::nullopt;
         }
-        return std::nullopt;
+        return 0;
     }
 
     bool JsonFileHandler::writeJsonFile(const Json::Value &jsonData, const std::string &outputFilePath)

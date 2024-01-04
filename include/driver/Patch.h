@@ -23,9 +23,10 @@ namespace driver
         // setters
         bool setScore(double newScore);
 
+        std::vector<std::string> keys;
+
     private:
         // members
-        std::vector<std::string> keys;
         double score;
         std::string value;
     };

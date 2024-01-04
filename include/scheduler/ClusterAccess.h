@@ -22,6 +22,7 @@ extern "C"
 #include <external/cJSON.h>
 #include <model/v1_pod.h>
 #include <model/v1_deployment.h>
+#include "include/generic.h"
 }
 
 #include <Patch.h>
@@ -32,7 +33,7 @@ namespace scheduler
     class ClusterAccess
     {
     public:
-        bool create(cJSON *jsonData, apiClient_t *apiClient, std::string namespc) const;
+        bool create(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const;
         bool patch(cJSON *jsonData, apiClient_t *apiClient, std::string namespc, driver::Patch &patch) const;
         bool check_pod_exists(apiClient_t *apiClient, std::string pod_name) const;
 

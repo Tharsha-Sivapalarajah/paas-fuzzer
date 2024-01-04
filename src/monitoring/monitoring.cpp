@@ -27,7 +27,7 @@ namespace monitoring
         }
     }
 
-    bool Monitoring::get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string namespace) const
+    bool Monitoring::get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string name_space) const
     {
         if (apiClient == NULL)
         {
@@ -37,7 +37,8 @@ namespace monitoring
                 return false;
             }
         }
-        core_v1_event_list_t *event = CoreV1API_listNamespacedEvent(apiClient, const_cast<char *>(_namespace.c_str()), NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, 60, 0, 0);
+        core_v1_event_list_t *event_list = CoreV1API_listNamespacedEvent(apiClient, const_cast<char *>(_namespace.c_str()), NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, 60, 0, 0);
+        return true;
     }
 
     bool Monitoring::check_pod_exists(apiClient_t *apiClient, std::string pod_name) const
