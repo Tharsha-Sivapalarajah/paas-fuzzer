@@ -11,11 +11,11 @@ void updatePatches(std::vector<driver::Patch> *patches, scheduler::ClusterAccess
 {
     while (true)
     {
-        // for (driver::Patch patch : *patches)
-        // {
-        // std::cout << patch.getValue() << std::endl;
-        clusterAccess->patch(initialConfig, NULL, "default", (*patches)[2]);
-        // }
+        for (driver::Patch patch : *patches)
+        {
+            // std::cout << patch.getValue() << std::endl;
+            clusterAccess->patch(initialConfig, NULL, "default", patch);
+        }
         std::sort((*patches).begin(), (*patches).end(), compareByFloatValue);
         break;
     }

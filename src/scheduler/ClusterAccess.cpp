@@ -106,6 +106,21 @@ namespace scheduler
         return false;
     }
 
+    bool ClusterAccess::get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string _namespace) const
+    {
+        if (apiClient == NULL)
+        {
+            if (!createAPI_client(&apiClient))
+            {
+                printf("Cannot load kubernetes configuration.\n");
+                return false;
+            }
+        }
+        core_v1_event_list_t *event_list = CoreV1API_listNamespacedEvent(apiClient, const_cast<char *>(_namespace.c_str()), NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, 60, 0, 0);
+        std::cout << (char *)(event_list->items->firstEntry->data) << std::endl;
+        return true;
+    }
+
     bool ClusterAccess::check_pod_exists(apiClient_t *apiClient, std::string pod_name) const
     {
         if (apiClient == NULL)
@@ -223,59 +238,18 @@ namespace scheduler
         return true;
     }
 
-    // object_t *constructPatchBody()
-    // {
-    // cJSON *patchArray = cJSON_CreateArray();
-    // cJSON *patchObject = cJSON_CreateObject();
-
-    // cJSON_AddItemToArray(patchArray, patchObject);
-
-    // cJSON_AddStringToObject(patchObject, "op", "replace");
-    // cJSON_AddStringToObject(patchObject, "path", "/spec/replicas");
-    // cJSON_AddNumberToObject(patchObject, "value", 3);
-
-    // object_t *patchBody = (object_t *)calloc(1, sizeof(object_t));
-    // patchBody->temporary = cJSON_PrintUnformatted(patchArray);
-
-    // cJSON_Delete(patchArray);
-
-    // return patchBody;
-
-    // Create a cJSON object representing a simple JSON structure
-    // object_t *patchBody = (object_t *)calloc(1, sizeof(object_t));
-    // cJSON *root = cJSON_CreateObject();
-    // cJSON *rootArray = cJSON_CreateArray();
-    // cJSON_AddArrayToObject(root, );
-
-    // cJSON_Print()
-    //     cJSON_AddStringToObject(root, "op", "replace");
-    // cJSON_AddStringToObject(root, "path", "/spec/replicas");
-    // cJSON_AddNumberToObject(root, "value", 3);
-
-    // Convert the cJSON structure to a JSON-formatted string
-    // char *jsonString = cJSON_Print(root);
-
-    // Print the resulting JSON string
-    // printf("JSON String:\n%s\n", jsonString);
-    // object_t *patchBody = object_parseFromJSON(root);
-    // // Free the cJSON structure and the dynamically allocated JSON string
-    // cJSON_Delete(root);
-    // free(jsonString);
-    // return patchBody;
-    // }
-
     // patch the existing Deployment
     bool ClusterAccess::patchDeployment(apiClient_t *apiClient, cJSON *jsonData, char *_namespace, driver::Patch &patch) const
     {
         v1_deployment_t *deploymentInfo = v1_deployment_parseFromJSON(jsonData);
 
-        const char *patchBody = "[{\"op\": \"replace\", \"path\": \"/spec/replicas\", \"value\": 1 }]";
+        std::string patchBody = "[{\"op\": \"replace\", \"path\": \"" + patch.getPatchPathString() + "\", \"value\":" + patch.getPatchValue() + "}]";
         genericClient_t *genericClient = genericClient_create(apiClient, "apps", "v1", "deployments");
 
         list_t *contentType = list_createList();
         list_addElement(contentType, (char *)"application/json-patch+json");
 
-        char *list = Generic_patchNamespacedResource(genericClient, "default", deploymentInfo->metadata->name, patchBody, NULL, NULL, NULL, NULL, contentType);
+        char *list = Generic_patchNamespacedResource(genericClient, "default", deploymentInfo->metadata->name, const_cast<char *>(patchBody.c_str()), NULL, NULL, NULL, NULL, contentType);
         free(list);
 
         return true;
@@ -340,7 +314,9 @@ namespace scheduler
 //         Json::Value configFile = originalData;
 //         std::vector<driver::Patch> patches = {};
 //         fileHandler.createConfigFile(configFile, patches);
-//         ca.patch(jsonData, NULL, "default", patches[0]);
+//         // ca.patch(jsonData, NULL, "default", patches[0]);
+
+//         ca.get_namespaced_events(NULL, "busybox-deployment-65fd7d9646-8pqvr", "default");
 
 //         cJSON_Delete(jsonData);
 //     }
