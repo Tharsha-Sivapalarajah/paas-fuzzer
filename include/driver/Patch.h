@@ -26,10 +26,12 @@ namespace driver
 
     private:
         bool isInteger(const std::string &s) const;
+        std::pair<double, double> calculateStats(std::vector<double> values) const;
 
         // members
         double score;
         std::string value;
         std::vector<std::string> keys;
+        std::vector<double> times;
     };
 }
