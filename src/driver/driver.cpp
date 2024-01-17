@@ -14,7 +14,16 @@ void updatePatches(std::vector<driver::Patch> *patches, scheduler::ClusterAccess
         for (driver::Patch patch : *patches)
         {
             // std::cout << patch.getValue() << std::endl;
-            clusterAccess->patch(initialConfig, NULL, "default", patch);
+            auto startTime = std::chrono::high_resolution_clock::now();
+            clusterAccess->patch(&initialConfig, NULL, "default", patch);
+            while (!clusterAccess->isPropagationComplete(initialConfig, &patch))
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+            patch.setScore(duration.count());
+            std::cout << "Time duration: " << duration.count() << " milliseconds" << std::endl;
         }
         std::sort((*patches).begin(), (*patches).end(), compareByFloatValue);
         break;
@@ -49,10 +58,9 @@ int main()
     }
 
     std::thread myThread(updatePatches, &patches, &clusterAccess, initialSetup);
+    // query generator and kubernetes service connector
 
-    // Do some work in the main thread
-
-    myThread.join(); // Wait for the thread to finish
+    myThread.join();
 
     cJSON_Delete(initialSetup);
     return 0;

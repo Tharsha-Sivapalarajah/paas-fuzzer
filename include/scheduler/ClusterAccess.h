@@ -34,9 +34,11 @@ namespace scheduler
     {
     public:
         bool create(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const;
-        bool patch(cJSON *jsonData, apiClient_t *apiClient, std::string namespc, driver::Patch &patch) const;
+        bool patch(cJSON **jsonData, apiClient_t *apiClient, std::string namespc, driver::Patch &patch) const;
         bool check_pod_exists(apiClient_t *apiClient, std::string pod_name) const;
         bool get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string name_space) const;
+        cJSON *get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const;
+        bool isPropagationComplete(cJSON *initialConfig, driver::Patch *patch);
 
     private:
         bool createAPI_client(apiClient_t **apiClient) const;
@@ -44,6 +46,6 @@ namespace scheduler
         bool createPod(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
         bool deleteDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
         bool createDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
-        bool patchDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc, driver::Patch &patch) const;
+        bool patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *namespc, driver::Patch &patch) const;
     };
 };

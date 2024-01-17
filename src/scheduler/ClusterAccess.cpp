@@ -239,9 +239,9 @@ namespace scheduler
     }
 
     // patch the existing Deployment
-    bool ClusterAccess::patchDeployment(apiClient_t *apiClient, cJSON *jsonData, char *_namespace, driver::Patch &patch) const
+    bool ClusterAccess::patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *_namespace, driver::Patch &patch) const
     {
-        v1_deployment_t *deploymentInfo = v1_deployment_parseFromJSON(jsonData);
+        v1_deployment_t *deploymentInfo = v1_deployment_parseFromJSON(*jsonData);
 
         std::string patchBody = "[{\"op\": \"replace\", \"path\": \"" + patch.getPatchPathString() + "\", \"value\":" + patch.getPatchValue() + "}]";
         genericClient_t *genericClient = genericClient_create(apiClient, "apps", "v1", "deployments");
@@ -249,14 +249,14 @@ namespace scheduler
         list_t *contentType = list_createList();
         list_addElement(contentType, (char *)"application/json-patch+json");
 
-        char *list = Generic_patchNamespacedResource(genericClient, "default", deploymentInfo->metadata->name, const_cast<char *>(patchBody.c_str()), NULL, NULL, NULL, NULL, contentType);
+        char *list = Generic_patchNamespacedResource(genericClient, _namespace, deploymentInfo->metadata->name, const_cast<char *>(patchBody.c_str()), NULL, NULL, NULL, NULL, contentType);
         free(list);
-
+        *jsonData = get_namespaced_deployment(*jsonData, apiClient, _namespace);
         return true;
     }
 
     // create a patch
-    bool ClusterAccess::patch(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace, driver::Patch &patch) const
+    bool ClusterAccess::patch(cJSON **jsonData, apiClient_t *apiClient, std::string _namespace, driver::Patch &patch) const
     {
         if (apiClient == NULL)
         {
@@ -267,7 +267,7 @@ namespace scheduler
             }
         }
 
-        cJSON *kind = cJSON_GetObjectItem(jsonData, "kind");
+        cJSON *kind = cJSON_GetObjectItem(*jsonData, "kind");
         if (kind != NULL)
         {
             std::string kindVal = kind->valuestring;
@@ -297,6 +297,100 @@ namespace scheduler
             }
         }
 
+        return true;
+    }
+
+    cJSON *ClusterAccess::get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const
+    {
+
+        if (apiClient == NULL)
+        {
+            if (!createAPI_client(&apiClient))
+            {
+                printf("Cannot load kubernetes configuration.\n");
+                return cJSON_CreateObject();
+            }
+        }
+
+        std::string deployment_name = cJSON_GetObjectItem(jsonData, "metadata")->child->valuestring;
+        genericClient_t *genericClient = genericClient_create(apiClient, "apps", "v1", "deployments");
+        char *output = Generic_readNamespacedResource(genericClient, const_cast<char *>(_namespace.c_str()), const_cast<char *>(deployment_name.c_str()));
+        cJSON *currentState = cJSON_Parse(output);
+        // std::cout << cJSON_GetObjectItem(currentState, "metadata")->child->valuestring << std::endl;
+        return currentState;
+    }
+
+    bool ClusterAccess::isPropagationComplete(cJSON *initialConfig, driver::Patch *patch)
+    {
+        apiClient_t *apiClient;
+
+        if (!createAPI_client(&apiClient))
+        {
+            printf("Cannot load kubernetes configuration.\n");
+            return false;
+        }
+
+        int desiredReplicaCount = cJSON_GetObjectItem(cJSON_GetObjectItem(initialConfig, "spec"), "replicas")->valueint;
+        cJSON *currentState = get_namespaced_deployment(initialConfig, apiClient, "default");
+        int currentReplicaCount = cJSON_GetObjectItem(currentState, "spec")->child->valueint;
+        std::cout << desiredReplicaCount << currentReplicaCount << std::endl;
+        if (desiredReplicaCount != currentReplicaCount)
+        {
+            return false;
+        }
+
+        char *deploymentName = cJSON_GetObjectItem(initialConfig, "metadata")->child->valuestring;
+        char labelSelector[100];
+        snprintf(labelSelector, sizeof(labelSelector), "app.kubernetes.io/name=%s", deploymentName);
+        char *_namespace = (char *)"default";
+
+        // Construct the field selector for Running pods
+        char fieldSelector[100] = "status.phase=Running";
+
+        v1_pod_list_t *pod_list = NULL;
+
+        pod_list = CoreV1API_listNamespacedPod(apiClient,
+                                               _namespace,    /*namespace */
+                                               NULL,          /* pretty */
+                                               0,             /* allowWatchBookmarks */
+                                               NULL,          /* continue */
+                                               fieldSelector, /* fieldSelector */
+                                               NULL,          /* labelSelector */
+                                               0,             /* limit */
+                                               NULL,          /* resourceVersion */
+                                               NULL,          /* resourceVersionMatch */
+                                               0,             /* sendInitialEvents */
+                                               0,             /* timeoutSeconds */
+                                               0              /* watch */
+        );
+
+        apiClient_free(apiClient);
+        cJSON_free(currentState);
+        if (pod_list)
+        {
+            // printf("Get pod list:\n");
+            listEntry_t *listEntry = NULL;
+            v1_pod_t *pod = NULL;
+            int podCount = 0;
+            list_ForEach(listEntry, pod_list->items)
+            {
+                pod = (v1_pod_t *)listEntry->data;
+                // printf("\tThe pod name: %s\n", pod->metadata->name);
+                podCount++;
+            }
+            v1_pod_list_free(pod_list);
+            pod_list = NULL;
+            if (podCount != desiredReplicaCount)
+            {
+                return false;
+            }
+            return true;
+        }
+        else
+        {
+            printf("Cannot get any pod.\n");
+            return false;
+        }
         return true;
     }
 }
