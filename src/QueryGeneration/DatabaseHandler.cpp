@@ -1,5 +1,4 @@
 #include "DatabaseHandler.h"
-#include "QueryFileHandler.h"
 
 namespace QueryGeneration {
 

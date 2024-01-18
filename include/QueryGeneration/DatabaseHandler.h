@@ -4,6 +4,7 @@
 #include <mysql_driver.h>
 #include <mysql_connection.h>
 #include <cppconn/driver.h>
+#include "QueryFileHandler.h"
 
 namespace QueryGeneration {
     class DatabaseHandler {
