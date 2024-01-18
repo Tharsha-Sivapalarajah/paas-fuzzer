@@ -12,10 +12,10 @@ Developing a fuzzing framework for testing the scheduler module of container orc
 
 ### Team Members
 Students:
-[Kabilan Mahathevan](https://github.com/KabilanMA)
-[Tharsha Sivapalarajah](https://github.com/Tharsha-Sivapalarajah)
-[Sivakajan Sivaparan](https://github.com/sivakajan-tech)
+- [Kabilan Mahathevan](https://github.com/KabilanMA) <br>
+- [Tharsha Sivapalarajah](https://github.com/Tharsha-Sivapalarajah) <br>
+- [Sivakajan Sivaparan](https://github.com/sivakajan-tech) <br>
 
 Supervisors:
-[Dr. Sunimal Rathnayake](https://sunimalr.staff.uom.lk) - University of Moratuwa
-[Dr. Ridwan Shariffdeen](https://rshariffdeen.com) - National University of Singapore
+- [Dr. Sunimal Rathnayake](https://sunimalr.staff.uom.lk) - University of Moratuwa <br>
+- [Dr. Ridwan Shariffdeen](https://rshariffdeen.com) - National University of Singapore <br>
