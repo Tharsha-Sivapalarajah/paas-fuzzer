@@ -3,14 +3,14 @@
 namespace scheduler
 {
     // create a Deployment
-    bool ClusterAccess::createDeployment(apiClient_t *apiClient, cJSON *jsonData, char *_namespace) const
+    bool ClusterAccess::createDeployment(apiClient_t *apiClient, cJSON *jsonData, char *_namespace, int verbose) const
     {
-        if (!jsonData)
+        if (!jsonData && verbose >= 1)
         {
             printf("Invalid cJSON data file");
             return false;
         }
-        if (!apiClient)
+        if (!apiClient && verbose >= 1)
         {
             printf("Invalid k8s API Client");
             return false;
@@ -19,16 +19,21 @@ namespace scheduler
         v1_deployment_t *deploymentInfo = v1_deployment_parseFromJSON(jsonData);
 
         v1_deployment_t *adeployment = AppsV1API_createNamespacedDeployment(apiClient, _namespace, deploymentInfo, NULL, NULL, NULL, NULL);
-        // printf("code=%ld\n", apiClient->response_code);
         v1_deployment_free(adeployment);
         v1_deployment_free(deploymentInfo);
         if (apiClient->response_code == 201 || apiClient->response_code == 200)
+        {
+            if (verbose >= 3)
+            {
+                printf("Deployment successfully deployed with response code: %li\n", apiClient->response_code);
+            }
             return true;
+        }
         return false;
     }
 
     // delete an existing Deployment
-    bool ClusterAccess::deleteDeployment(apiClient_t *apiClient, cJSON *jsonData, char *_namespace) const
+    bool ClusterAccess::deleteDeployment(apiClient_t *apiClient, cJSON *jsonData, char *_namespace, int verbose) const
     {
         if (!jsonData)
         {
@@ -54,7 +59,7 @@ namespace scheduler
     }
 
     // create a pod
-    bool ClusterAccess::createPod(apiClient_t *apiClient, cJSON *jsonData, char *_namespace) const
+    bool ClusterAccess::createPod(apiClient_t *apiClient, cJSON *jsonData, char *_namespace, int verbose) const
     {
         if (!jsonData)
         {
@@ -78,7 +83,7 @@ namespace scheduler
     }
 
     // delete an existing pod
-    bool ClusterAccess::deletePod(apiClient_t *apiClient, cJSON *jsonData, char *_namespace) const
+    bool ClusterAccess::deletePod(apiClient_t *apiClient, cJSON *jsonData, char *_namespace, int verbose) const
     {
         if (!jsonData)
         {
@@ -106,7 +111,7 @@ namespace scheduler
         return false;
     }
 
-    bool ClusterAccess::get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string _namespace) const
+    bool ClusterAccess::get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string _namespace, int verbose) const
     {
         if (apiClient == NULL)
         {
@@ -121,7 +126,7 @@ namespace scheduler
         return true;
     }
 
-    bool ClusterAccess::check_pod_exists(apiClient_t *apiClient, std::string pod_name) const
+    bool ClusterAccess::check_pod_exists(apiClient_t *apiClient, std::string pod_name, int verbose) const
     {
         if (apiClient == NULL)
         {
@@ -192,7 +197,7 @@ namespace scheduler
     }
 
     // create resource with the provided JSON data
-    bool ClusterAccess::create(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const
+    bool ClusterAccess::create(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace, int verbose) const
     {
         if (apiClient == NULL)
         {
@@ -211,19 +216,19 @@ namespace scheduler
 
             if (kindVal == "DEPLOYMENT")
             {
-                if (createDeployment(apiClient, jsonData, const_cast<char *>(_namespace.c_str())))
+                if (createDeployment(apiClient, jsonData, const_cast<char *>(_namespace.c_str()), verbose))
                 {
-                    std::cout << "Deployment successful" << std::endl;
+                    std::cout << "Initial Deployment Successful" << std::endl;
                 }
                 else
                 {
-                    std::cout << "Deplyoment failed" << std::endl;
+                    std::cout << "Initial Deplyoment Failed" << std::endl;
                     return false;
                 }
             }
             else if (kindVal == "POD")
             {
-                if (createPod(apiClient, jsonData, const_cast<char *>(_namespace.c_str())))
+                if (createPod(apiClient, jsonData, const_cast<char *>(_namespace.c_str()), verbose))
                 {
                     std::cout << "Deplyoment successful" << std::endl;
                 }
@@ -239,8 +244,17 @@ namespace scheduler
     }
 
     // patch the existing Deployment
-    bool ClusterAccess::patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *_namespace, driver::Patch &patch) const
+    bool ClusterAccess::patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *_namespace, driver::Patch &patch, int verbose) const
     {
+        if (apiClient == NULL)
+        {
+            if (!createAPI_client(&apiClient))
+            {
+                printf("Cannot load kubernetes configuration.\n");
+                return false;
+            }
+        }
+
         v1_deployment_t *deploymentInfo = v1_deployment_parseFromJSON(*jsonData);
 
         std::string patchBody = "[{\"op\": \"replace\", \"path\": \"" + patch.getPatchPathString() + "\", \"value\":" + patch.getPatchValue() + "}]";
@@ -249,14 +263,18 @@ namespace scheduler
         list_t *contentType = list_createList();
         list_addElement(contentType, (char *)"application/json-patch+json");
 
-        char *list = Generic_patchNamespacedResource(genericClient, _namespace, deploymentInfo->metadata->name, const_cast<char *>(patchBody.c_str()), NULL, NULL, NULL, NULL, contentType);
-        free(list);
-        *jsonData = get_namespaced_deployment(*jsonData, apiClient, _namespace);
+        driver::JsonFileHandler fileHandler;
+
+        char *output = Generic_patchNamespacedResource(genericClient, _namespace, deploymentInfo->metadata->name, const_cast<char *>(patchBody.c_str()), NULL, NULL, NULL, NULL, contentType);
+
+        // std::cout << output << std::endl;
+
+        fileHandler.modifyPatch(*jsonData, patch);
         return true;
     }
 
     // create a patch
-    bool ClusterAccess::patch(cJSON **jsonData, apiClient_t *apiClient, std::string _namespace, driver::Patch &patch) const
+    bool ClusterAccess::patch(cJSON **jsonData, apiClient_t *apiClient, std::string _namespace, driver::Patch &patch, int verbose) const
     {
         if (apiClient == NULL)
         {
@@ -268,6 +286,17 @@ namespace scheduler
         }
 
         cJSON *kind = cJSON_GetObjectItem(*jsonData, "kind");
+
+        if (verbose >= 10)
+        {
+            printf("-----------------------------------------\n");
+            std::string deploymentName = cJSON_GetObjectItem(cJSON_GetObjectItem(*jsonData, "metadata"), "name")->valuestring;
+            std::cout << "Patch for Resource '" << kind->valuestring << "' named '" << deploymentName << "'" << std::endl;
+            std::cout << "Patch to be created:" << std::endl;
+            std::cout << patch << std::endl;
+            printf("-----------------------------------------\n");
+        }
+
         if (kind != NULL)
         {
             std::string kindVal = kind->valuestring;
@@ -275,24 +304,25 @@ namespace scheduler
 
             if (kindVal == "DEPLOYMENT")
             {
-                if (patchDeployment(apiClient, jsonData, const_cast<char *>(_namespace.c_str()), patch))
+                if (patchDeployment(apiClient, jsonData, const_cast<char *>(_namespace.c_str()), patch, verbose))
                 {
-                    std::cout << "Deployment successful" << std::endl;
+                    std::cout << "Patch Deployment successful" << std::endl;
+                    // std::cout << cJSON_Print(*jsonData) << std::endl;
                 }
                 else
                 {
-                    std::cout << "Deplyoment failed" << std::endl;
+                    std::cout << "Patch Deplyoment failed" << std::endl;
                 }
             }
             else if (kindVal == "POD")
             {
-                if (patchDeployment(apiClient, jsonData, const_cast<char *>(_namespace.c_str()), patch))
+                if (patchDeployment(apiClient, jsonData, const_cast<char *>(_namespace.c_str()), patch, verbose))
                 {
-                    std::cout << "Deplyoment successful" << std::endl;
+                    std::cout << "Patch Pod successful" << std::endl;
                 }
                 else
                 {
-                    std::cout << "Deplyoment failed" << std::endl;
+                    std::cout << "Patch Pod failed" << std::endl;
                 }
             }
         }
@@ -300,7 +330,7 @@ namespace scheduler
         return true;
     }
 
-    cJSON *ClusterAccess::get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const
+    cJSON *ClusterAccess::get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace, int verbose) const
     {
 
         if (apiClient == NULL)
@@ -312,18 +342,54 @@ namespace scheduler
             }
         }
 
-        std::string deployment_name = cJSON_GetObjectItem(jsonData, "metadata")->child->valuestring;
+        std::string deployment_name = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "metadata"), "name")->valuestring;
         genericClient_t *genericClient = genericClient_create(apiClient, "apps", "v1", "deployments");
-        char *output = Generic_readNamespacedResource(genericClient, const_cast<char *>(_namespace.c_str()), const_cast<char *>(deployment_name.c_str()));
-        cJSON *currentState = cJSON_Parse(output);
+
+        char labelSelector[100];
+        snprintf(labelSelector, sizeof(labelSelector), "app.kubernetes.io/name=%s", deployment_name.c_str());
+
+        v1_deployment_t *updatedDeployment = AppsV1API_readNamespacedDeployment(apiClient, const_cast<char *>(deployment_name.c_str()), const_cast<char *>(_namespace.c_str()), NULL);
+
+        cJSON *currentState = v1_deployment_convertToJSON(updatedDeployment);
+
+        // char *output = Generic_readNamespacedResource(genericClient, const_cast<char *>(_namespace.c_str()), const_cast<char *>(deployment_name.c_str()));
+        // cJSON *currentState = cJSON_Parse(output);
+        // cJSON *currentState = v1_deployment_convertToJSON(deployment);
         // std::cout << cJSON_GetObjectItem(currentState, "metadata")->child->valuestring << std::endl;
+        // std::cout << cJSON_Print(currentState) << std::endl;
         return currentState;
     }
 
-    bool ClusterAccess::isPropagationComplete(cJSON *initialConfig, driver::Patch *patch)
+    /**
+     * @brief Things to check:
+     * 1. Confirm the resource allocation
+     * 2. Does application has required number of replicas<
+     *
+     * @return true
+     * @return false
+     */
+    bool ClusterAccess::bugExists() const
     {
-        apiClient_t *apiClient;
+    }
 
+    bool ClusterAccess::reset() const
+    {
+    }
+
+    /**
+     * @brief Things to check:
+     * 1. Confirm that required number of ready state replicas exist.
+     * 2. Confirm that the non-ready state replicas remains constant or have only a very small change.
+     *
+     * @param initialConfig
+     * @param patch
+     * @return true
+     * @return false
+     */
+    bool ClusterAccess::isPropagationComplete(cJSON *initialConfig, driver::Patch &patch, int verbose)
+    {
+        // create the api client for the communication
+        apiClient_t *apiClient;
         if (!createAPI_client(&apiClient))
         {
             printf("Cannot load kubernetes configuration.\n");
@@ -331,9 +397,11 @@ namespace scheduler
         }
 
         int desiredReplicaCount = cJSON_GetObjectItem(cJSON_GetObjectItem(initialConfig, "spec"), "replicas")->valueint;
-        cJSON *currentState = get_namespaced_deployment(initialConfig, apiClient, "default");
-        int currentReplicaCount = cJSON_GetObjectItem(currentState, "spec")->child->valueint;
-        std::cout << desiredReplicaCount << currentReplicaCount << std::endl;
+        cJSON *currentState = get_namespaced_deployment(initialConfig, apiClient, "default", verbose); // get the current deployment state json file
+
+        int currentReplicaCount = cJSON_GetObjectItem(cJSON_GetObjectItem(currentState, "spec"), "replicas")->valueint;
+
+        // if relicaset count doesn't match; propogation not completed
         if (desiredReplicaCount != currentReplicaCount)
         {
             return false;
@@ -384,48 +452,18 @@ namespace scheduler
             {
                 return false;
             }
-            return true;
         }
         else
         {
             printf("Cannot get any pod.\n");
             return false;
         }
+
+        driver::JsonFileHandler fileHandler;
+        if (!fileHandler.isPatchIncluded(currentState, patch, verbose))
+        {
+            return false;
+        }
         return true;
     }
 }
-
-// int main(int argc, char *argv[])
-// {
-//     driver::JsonFileHandler fileHandler;
-//     Json::Value originalData;
-//     std::string location = "../../../data/output.json";
-//     if (fileHandler.readJsonFile(originalData, location))
-//     {
-//         scheduler::ClusterAccess ca;
-//         cJSON *jsonData = fileHandler.generateCJSON(originalData);
-
-//         Json::Value configFile = originalData;
-//         std::vector<driver::Patch> patches = {};
-//         fileHandler.createConfigFile(configFile, patches);
-//         // ca.patch(jsonData, NULL, "default", patches[0]);
-
-//         ca.get_namespaced_events(NULL, "busybox-deployment-65fd7d9646-8pqvr", "default");
-
-//         cJSON_Delete(jsonData);
-//     }
-//     else
-//     {
-//         std::cout << "Read failed" << std::endl;
-//     }
-//     // scheduler::ClusterAccess ca;
-//     // if (ca.check_pod_exists(NULL, "busybox-deployment-65fd7d9646-7hqc7"))
-//     // {
-//     //     printf("Pod exists\n");
-//     // }
-//     // else
-//     // {
-//     //     printf("Pod doesn't exists\n");
-//     // }
-//     return 0;
-// }

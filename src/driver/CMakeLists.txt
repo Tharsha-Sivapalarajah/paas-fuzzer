@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add the executable
 add_executable(ConfigGenerator 
                 driver.cpp
+                ConfigGenerator.cpp
                 JsonFileHandler.cpp
                 Patch.cpp
                 ../scheduler/ClusterAccess.cpp

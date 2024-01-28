@@ -44,7 +44,14 @@ namespace driver
         std::string outputPath = "";
         for (const std::string &pathKey : keys)
         {
-            outputPath += ("/" + pathKey);
+            if (isInteger(pathKey))
+            {
+                outputPath += "/" + std::to_string((std::stoi(pathKey) - 1));
+            }
+            else
+            {
+                outputPath += ("/" + pathKey);
+            }
         }
         return outputPath;
     }
@@ -83,6 +90,13 @@ namespace driver
         double stdDev = std::sqrt(variance);
 
         return {mean, stdDev};
+    }
+
+    std::ostream &operator<<(std::ostream &os, const Patch &obj)
+    {
+
+        os << "Patch: " << obj.getPatchPathString() << "\n\tValue:" << obj.value;
+        return os;
     }
 
 }
