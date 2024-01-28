@@ -5,7 +5,7 @@
       "name": "busybox-deployment"
     },
     "spec": {
-      "replicas": [1, 2, 4],
+      "replicas": 1,
       "selector": {
         "matchLabels": {
           "app": "busybox"
@@ -18,6 +18,14 @@
           }
         },
         "spec": {
+          "securityContext": {
+          "sysctls": [
+            {
+              "name": {"operation":"patch", "type":"enum", "values": ["net.core.somaxconn", "net.core.somaxcon"]},
+              "value": "10000"
+            }
+          ]
+          },
           "containers": [
             {
               "name": "busybox-container",

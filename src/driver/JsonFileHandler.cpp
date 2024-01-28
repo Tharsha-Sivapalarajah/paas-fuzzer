@@ -2,6 +2,204 @@
 
 namespace driver
 {
+
+    bool JsonFileHandler::bugReportDirectoryCreated = false;
+
+    char *JsonFileHandler::readJSONFile(const char *filename) const
+    {
+        // create a readable FILE obejct to read json file
+        FILE *file = fopen(filename, "r");
+        if (file == NULL)
+        {
+            perror("Error opening file");
+            exit(EXIT_FAILURE);
+        }
+
+        fseek(file, 0, SEEK_END);
+        long file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        char *json_data = (char *)malloc(file_size + 1);
+        fread(json_data, 1, file_size, file);
+        fclose(file);
+
+        json_data[file_size] = '\0'; // Null-terminate the string
+        return json_data;
+    }
+
+    cJSON *JsonFileHandler::createJSONObject(const char *filename) const
+    {
+        // read and get the char of the json input file
+        char *json_data = readJSONFile(filename);
+        // parse the input char to cJSON object
+        cJSON *root = cJSON_Parse(json_data);
+
+        // error handling if parsing failed
+        if (root == NULL)
+        {
+            const char *error_ptr = cJSON_GetErrorPtr();
+            if (error_ptr != NULL)
+            {
+                fprintf(stderr, "Error before: %s\n", error_ptr);
+            }
+            exit(EXIT_FAILURE);
+        }
+        return root;
+    }
+
+    int JsonFileHandler::compareCJSONObjects(cJSON *obj1, cJSON *obj2)
+    {
+        // Check if the types are the same
+        if (obj1->type != obj2->type)
+        {
+            return 0; // Not equal
+        }
+
+        // Check values based on type
+        switch (obj1->type)
+        {
+        case cJSON_Object:
+        case cJSON_Array:
+        {
+            // Check the number of elements
+            if (cJSON_GetArraySize(obj1) != cJSON_GetArraySize(obj2))
+            {
+                return 0; // Not equal
+            }
+
+            // Recursively compare each element
+            cJSON *item1 = obj1->child;
+            cJSON *item2 = obj2->child;
+
+            while (item1 != NULL && item2 != NULL)
+            {
+                if (!compareCJSONObjects(item1, item2))
+                {
+                    return 0; // Not equal
+                }
+                item1 = item1->next;
+                item2 = item2->next;
+            }
+
+            return 1; // Equal
+        }
+
+        case cJSON_String:
+            return (strcmp(obj1->valuestring, obj2->valuestring) == 0);
+
+        case cJSON_Number:
+            return (obj1->valuedouble == obj2->valuedouble);
+
+        case cJSON_True:
+        case cJSON_False:
+            return (obj1->valueint == obj2->valueint);
+
+        case cJSON_NULL:
+            return 1; // Equal
+        }
+
+        return 0; // Not equal
+    }
+
+    cJSON *JsonFileHandler::createConfigFile(const cJSON *inputJson, std::vector<std::string> keys, std::vector<std::vector<std::string>> &patchableKeys)
+    {
+        cJSON *currentItem = inputJson->child;
+        while (currentItem != NULL)
+        {
+            if (currentItem->type == cJSON_Object)
+            {
+                keys.push_back(currentItem->string);
+                // Recursively iterate through nested objects
+                createConfigFile(currentItem, keys, patchableKeys);
+                keys.pop_back();
+            }
+            else if (currentItem->type == cJSON_String)
+            {
+                // Check if the key is "key" and the value is "patch"
+                if (strcmp(currentItem->string, "operation") == 0 && strcmp(currentItem->valuestring, "patch") == 0)
+                {
+                    patchableKeys.push_back(keys);
+                }
+            }
+            else if (currentItem->type == cJSON_Array)
+            {
+                int count = 0;
+                cJSON *currentArrayElement = currentItem->child;
+                while (currentArrayElement != NULL)
+                {
+                    count++;
+                    if (currentArrayElement->type == cJSON_Object)
+                    {
+                        keys.push_back(currentItem->string);
+                        keys.push_back(std::to_string(count));
+                        createConfigFile(currentArrayElement, keys, patchableKeys);
+                        keys.pop_back();
+                        keys.pop_back();
+                    }
+                    else
+                    {
+                        keys.push_back(currentItem->string);
+                        createConfigFile(currentArrayElement, keys, patchableKeys);
+                        keys.pop_back();
+                    }
+                    currentArrayElement = currentArrayElement->next;
+                }
+            }
+
+            // Move to the next item
+            currentItem = currentItem->next;
+        }
+        return currentItem;
+    }
+
+    bool JsonFileHandler::isInteger(const std::string &s) const
+    {
+        try
+        {
+            std::stoi(s);
+            return true;
+        }
+        catch (const std::invalid_argument &e)
+        {
+            return false;
+        }
+        catch (const std::out_of_range &e)
+        {
+            return false;
+        }
+    }
+
+    void JsonFileHandler::modifyPatch(cJSON *jsonData, driver::Patch patch) const
+    {
+        cJSON *currentItem = jsonData;
+        std::vector<std::string> patchKeys = patch.getKeys();
+
+        for (size_t i = 0; i < patchKeys.size() - 1; i++)
+        {
+            const auto key = patchKeys[i];
+
+            if (isInteger(key))
+            {
+                // array
+                currentItem = cJSON_GetArrayItem(currentItem, std::stoi(key) - 1);
+            }
+            else
+            {
+                // object
+                currentItem = cJSON_GetObjectItem(currentItem, key.c_str());
+            }
+        }
+
+        if (isInteger(patch.getValue()))
+        {
+            cJSON_ReplaceItemInObject(currentItem, patchKeys[patchKeys.size() - 1].c_str(), cJSON_CreateNumber(std::stoi(patch.getValue())));
+        }
+        else
+        {
+            cJSON_ReplaceItemInObject(currentItem, patchKeys[patchKeys.size() - 1].c_str(), cJSON_CreateString(patch.getValue().c_str()));
+        }
+    }
+
     bool JsonFileHandler::readJsonFile(Json::Value &jsonData, const std::string &inputFilePath) const
     {
         std::ifstream input_file(inputFilePath);
@@ -16,106 +214,6 @@ namespace driver
         input_file.close();
 
         return true;
-    }
-
-    bool JsonFileHandler::createConfigFile(Json::Value &configJsonData, std::vector<Patch> &patches)
-    {
-        std::vector<std::vector<std::string>> patchableKeys;
-
-        for (const auto &key : configJsonData.getMemberNames())
-        {
-            // std::cout << element << std::endl;
-            std::string currentKey = key;
-            std::vector<std::string> keys = {};
-            keys.push_back(currentKey);
-
-            Json::Value &element = configJsonData[currentKey];
-
-            int response = handleJsonObj(element, keys, keys.size(), patchableKeys, configJsonData);
-        }
-
-        if (patchableKeys.size() > 0)
-        {
-            for (std::vector<std::string> patchKey : patchableKeys)
-            {
-                if (!patchKey.empty())
-                {
-                    std::string value = patchKey.back();
-                    patchKey.pop_back();
-
-                    Patch patch(patchKey, 0.0, value);
-                    patches.push_back(patch);
-                }
-            }
-            return true;
-        }
-        return false;
-        // for (const auto &row : patchableKeys)
-        // {
-        //     for (const auto &element : row)
-        //     {
-        //         std::cout << element << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
-    }
-
-    int JsonFileHandler::handleJsonObj(Json::Value &jsonObject, std::vector<std::string> keys, std::size_t keysSize, std::vector<std::vector<std::string>> &patchableKeys, Json::Value &parentJson)
-    {
-        if (jsonObject.isObject())
-        {
-            // std::cout << jsonObject << std::endl;
-            std::vector<std::string> tempKeys = jsonObject.getMemberNames();
-            // std::cout << tempKeys.size() << std::endl;
-            std::string currentKey;
-
-            for (int i = 0; i < tempKeys.size(); i++)
-            {
-                std::vector<std::string> currentKeys = keys;
-                currentKey = tempKeys[i];
-                Json::Value &element = jsonObject[currentKey];
-                // std::cout << element << std::endl;
-                currentKeys.push_back(currentKey);
-
-                int response = handleJsonObj(element, currentKeys, keys.size(), patchableKeys, jsonObject);
-            }
-            return 0;
-        }
-        else if (jsonObject.isArray())
-        {
-            bool isPatch = true;
-            for (int i = 0; i < jsonObject.size(); i++)
-            {
-                Json::Value arrayValue = jsonObject[i];
-                if (!arrayValue.isString() && !arrayValue.isInt())
-                { // not patch
-                    isPatch = false;
-                    if (arrayValue.isObject())
-                    {
-                        std::vector<std::string> currentKeys = keys;
-                        currentKeys.push_back(std::to_string(i + 1));
-                        int response = handleJsonObj(arrayValue, currentKeys, currentKeys.size(), patchableKeys, jsonObject);
-                    }
-                }
-            }
-
-            if (isPatch == true)
-            {
-                if (std::find(driver::forbiddenPatchKeyStrings.begin(), driver::forbiddenPatchKeyStrings.end(), keys[keys.size() - 1]) == driver::forbiddenPatchKeyStrings.end())
-                { // not found
-                    for (int i = 0; i < jsonObject.size(); i++)
-                    {
-                        std::vector<std::string> currentKeys = keys;
-                        Json::Value arrayValue = jsonObject[i];
-                        currentKeys.push_back(jsonObject[i].asString());
-                        patchableKeys.push_back(currentKeys);
-                    }
-                }
-                parentJson[keys.back()] = jsonObject[0];
-                return 1;
-            }
-        }
-        return 0;
     }
 
     bool JsonFileHandler::writeJsonFile(const Json::Value &jsonData, const std::string &outputFilePath)
@@ -206,12 +304,177 @@ namespace driver
         return cjsonObject;
     }
 
-    void JsonFileHandler::printCJSON(const cJSON *cJsonObject)
+    std::string JsonFileHandler::generateRandomFileName() const
     {
-        char *cjsonStr = cJSON_Print(cJsonObject);
-        std::cout << "CJSON representation:\n"
-                  << cjsonStr << std::endl;
-        cJSON_free(cjsonStr);
+        // Get the current time in milliseconds
+        auto currentTime = std::chrono::system_clock::now();
+        auto timeSinceEpoch = currentTime.time_since_epoch();
+        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch).count();
+
+        // Use a random number for additional uniqueness
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> distribution(0, 9999);
+        int randomSuffix = distribution(gen);
+
+        // Combine timestamp and random number to create a unique filename
+        std::string fileName = "file_" + std::to_string(milliseconds) + "_" + std::to_string(randomSuffix);
+
+        return fileName;
+    }
+
+    bool JsonFileHandler::isPatchIncluded(cJSON *jsonData, Patch &patch, int verbose) const
+    {
+        cJSON *currentJson = jsonData;
+        std::vector<std::string> patchKeys = patch.getKeys();
+        for (size_t i = 0; i < patchKeys.size(); i++)
+        {
+            std::string key = patchKeys[i];
+            if (isInteger(key))
+            {
+                currentJson = cJSON_GetArrayItem(currentJson, std::stoi(key) - 1);
+            }
+            else
+            {
+                currentJson = cJSON_GetObjectItem(currentJson, key.c_str());
+            }
+        }
+
+        if (isInteger(patch.getValue()))
+        {
+            if (currentJson->valueint)
+            {
+                if (std::stoi(patch.getValue()) == currentJson->valueint)
+                {
+                    return true;
+                }
+            }
+            else if (currentJson->valuestring)
+            {
+                if (strcmp(patch.getValue().c_str(), currentJson->valuestring) == 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else
+        {
+            if (currentJson->valueint)
+            {
+                if (std::stoi(patch.getValue()) == currentJson->valueint)
+                {
+                    return true;
+                }
+            }
+            else if (currentJson->valuestring)
+            {
+                if (strcmp(patch.getValue().c_str(), currentJson->valuestring) == 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    void createBugReportDirectory(std::string directoryPath, bool &bugReportDirectoryCreated, int verbose)
+    {
+        if (bugReportDirectoryCreated)
+        {
+            // bug directory already created
+            if (!fs::exists(directoryPath)) // check if the directory actually doesn't exists
+            {
+                std::cout << "Something went wrong in the bug report directory: " << directoryPath << std::endl;
+                bugReportDirectoryCreated = false;
+                exit(0);
+            }
+            else
+            {
+                // directory actually exists as expected
+
+                bugReportDirectoryCreated = true;
+            }
+        }
+        else
+        {
+            // bug directory is not created yet
+            // directory can still exists, if so, should delete the directory
+            if (!fs::exists(directoryPath))
+            {
+                // directory actually doesn't exist as expected
+                fs::create_directory(directoryPath);
+                if (verbose >= 3)
+                    std::cout << "Directory '" << directoryPath << "' created." << std::endl;
+            }
+            else
+            {
+                // directory exists even though it should not
+                if (verbose >= 3)
+                    std::cout << "Directory '" << directoryPath << "' already exists." << std::endl;
+                fs::remove_all(directoryPath);
+                if (verbose >= 3)
+                    std::cout << "Directory '" << directoryPath << "' and its content successfully removed." << std::endl;
+                fs::create_directory(directoryPath);
+                if (verbose >= 3)
+                    std::cout << "Directory '" << directoryPath << "' created." << std::endl;
+
+                bugReportDirectoryCreated = true;
+            }
+        }
+    }
+
+    bool JsonFileHandler::reportBug(cJSON *previousConfigFile, cJSON *currentConfigFile, std::vector<driver::Patch> &patches, driver::Patch &currentPatch, int verbose)
+    {
+        try
+        {
+            std::string directoryPath = "./bugReport";
+            createBugReportDirectory(directoryPath, bugReportDirectoryCreated, verbose);
+            std::string randomFilePrefix = this->generateRandomFileName();
+            directoryPath = directoryPath + "/" + randomFilePrefix;
+            bool temp = false;
+            createBugReportDirectory(directoryPath, temp, verbose);
+
+            std::string previousConfig = directoryPath + "/" + randomFilePrefix + "_previous.json";
+            std::string currentConfig = directoryPath + "/" + randomFilePrefix + "_current.json";
+
+            // Write the JSON string to a file
+            std::ofstream outputFilePrevious(previousConfig);
+            if (outputFilePrevious.is_open())
+            {
+                outputFilePrevious << cJSON_Print(previousConfigFile);
+                outputFilePrevious.close();
+                if (verbose >= 3)
+                    std::cout << "JSON object saved to " << previousConfig << std::endl;
+            }
+            else
+            {
+                if (verbose >= 3)
+                    std::cerr << "Unable to open file for writing previous config." << std::endl;
+                return false;
+            }
+
+            std::ofstream outputFileCurrent(currentConfig);
+            if (outputFileCurrent.is_open())
+            {
+                outputFileCurrent << cJSON_Print(currentConfigFile);
+                outputFileCurrent.close();
+                if (verbose >= 3)
+                    std::cout << "JSON object saved to " << currentConfig << std::endl;
+            }
+            else
+            {
+                std::cerr << "Unable to open file for writing current config." << std::endl;
+                return false;
+            }
+
+            return true;
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error creating bug report: " << e.what() << std::endl;
+            return false;
+        }
     }
 
 };

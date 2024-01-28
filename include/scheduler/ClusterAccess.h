@@ -33,19 +33,21 @@ namespace scheduler
     class ClusterAccess
     {
     public:
-        bool create(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const;
-        bool patch(cJSON **jsonData, apiClient_t *apiClient, std::string namespc, driver::Patch &patch) const;
-        bool check_pod_exists(apiClient_t *apiClient, std::string pod_name) const;
-        bool get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string name_space) const;
-        cJSON *get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace) const;
-        bool isPropagationComplete(cJSON *initialConfig, driver::Patch *patch);
+        bool create(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace, int verbose) const;
+        bool patch(cJSON **jsonData, apiClient_t *apiClient, std::string namespc, driver::Patch &patch, int verbose) const;
+        bool check_pod_exists(apiClient_t *apiClient, std::string pod_name, int verbose) const;
+        bool get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string name_space, int verbose) const;
+        cJSON *get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace, int verbose) const;
+        bool isPropagationComplete(cJSON *initialConfig, driver::Patch &patch, int verbose);
+        bool bugExists() const;
+        bool reset() const;
 
     private:
         bool createAPI_client(apiClient_t **apiClient) const;
-        bool deletePod(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
-        bool createPod(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
-        bool deleteDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
-        bool createDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc) const;
-        bool patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *namespc, driver::Patch &patch) const;
+        bool deletePod(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
+        bool createPod(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
+        bool deleteDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
+        bool createDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
+        bool patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *namespc, driver::Patch &patch, int verbose) const;
     };
 };

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <fstream>
 #include <json/json.h>
@@ -5,7 +7,9 @@
 #include <filesystem>
 #include <chrono>
 #include <thread>
+#include "constant.h"
 #include "ClusterAccess.h"
+#include "ConfigGenerator.h"
 
 #include "JsonFileHandler.h"
 
