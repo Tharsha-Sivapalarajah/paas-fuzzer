@@ -9,10 +9,7 @@ Kubernetes stands as the forefront and preeminent container orchestration tool, 
 Developing a fuzzing framework for testing the scheduler module of container orchestration tools is crucial, given the increasing usage of orchestration tools in the industry and the evolving nature of the scheduler module. The absence of a dedicated fuzzer for the scheduler module in container orchestration tools and PaaS systems underscores the project’s importance. It not only plays a vital role in evaluating these tools but also opens avenues for future developments in the domain.
 
 ### Commands
-<<<<<<< HEAD
 
-=======
->>>>>>> 87e61480903ae0afea9ee62338f7d09b36ec8387
 `minikube start --extra-config=kubelet.allowed-unsafe-sysctls=net.core.somaxconn`
 
 ### Methodology
