@@ -2,7 +2,14 @@
 
 #include <json/json.h>
 #include <iostream>
+#include <regex>
+#include <random>
+#include <fstream>
+#include <iomanip>
+#include <filesystem>
+
 #include "Patch.h"
+#include "JsonFileHandler.h"
 
 extern "C"
 {
@@ -12,7 +19,10 @@ extern "C"
 
 namespace driver
 {
-    class ConfigGenerator {
+    class ConfigGenerator
+    {
+    public:
+        void createPatches(cJSON *inputFile, std::vector<std::vector<std::string>> &patchableKeys, std::vector<driver::Patch> &patches, int verbose);
     };
 
 }

@@ -24,6 +24,8 @@ namespace driver
         // setters
         bool setScore(double newScore);
 
+        friend std::ostream &operator<<(std::ostream &os, const Patch &obj);
+
     private:
         bool isInteger(const std::string &s) const;
         std::pair<double, double> calculateStats(std::vector<double> values) const;

@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
+#include <random>
+#include <filesystem>
 
 #include "Patch.h"
 #include "constant.h"
@@ -18,11 +20,15 @@ extern "C"
 #include <external/cJSON.h>
 }
 
+namespace fs = std::filesystem;
+
 namespace driver
 {
     class JsonFileHandler
     {
     public:
+        cJSON *createJSONObject(const char *filename) const;
+        cJSON *createConfigFile(const cJSON *inputJson, std::vector<std::string> keys, std::vector<std::vector<std::string>> &patchableKeys);
         /**
          * @brief reads the JSON input file from the given location and return the JSON values into Json::Value
          *
@@ -41,7 +47,7 @@ namespace driver
          * @return true if the creating patches from the configuration file is success
          * @return false otherwise
          */
-        bool createConfigFile(Json::Value &configJsonData, std::vector<driver::Patch> &patches);
+        // bool createConfigFile(Json::Value &configJsonData, std::vector<driver::Patch> &patches);
 
         /**
          * @brief Generate a cJSON object for the given Json::Value object.
@@ -70,8 +76,22 @@ namespace driver
          */
         bool writeJsonFile(const Json::Value &jsonData, const std::string &outputFilePath);
 
+        bool reportBug(cJSON *previousConfigFile, cJSON *currentConfigFile, std::vector<driver::Patch> &patches, driver::Patch &currentPatch, int verbose);
+
+        void modifyPatch(cJSON *jsonData, driver::Patch patch) const;
+
+        int compareCJSONObjects(cJSON *obj1, cJSON *obj2);
+
+        bool isPatchIncluded(cJSON *jsonData, Patch &patch, int verbose) const;
+
     private:
+        static bool bugReportDirectoryCreated;
+
+        char *readJSONFile(const char *filename) const;
+
+        bool isInteger(const std::string &s) const;
         void jsoncppToCJSON(const Json::Value &jsonValue, cJSON *cjsonObject) const;
         int handleJsonObj(Json::Value &jsonObject, std::vector<std::string> keys, std::size_t keysSize, std::vector<std::vector<std::string>> &patchableKeys, Json::Value &parentJson);
+        std::string generateRandomFileName() const;
     };
 };
