@@ -14,7 +14,7 @@ Developing a fuzzing framework for testing the scheduler module of container orc
 
 ### Methodology
 
-![Methodology of Fuzzing Cloud PaaS Platforms](static/methodology.png)
+![Methodology of Fuzzing Cloud PaaS Platforms](static/Operation-flow.png)
 
 ### Team Members
 
