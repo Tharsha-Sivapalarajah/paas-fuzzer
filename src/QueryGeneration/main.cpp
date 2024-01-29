@@ -3,30 +3,52 @@
 #include "LogFileHandler.h"
 #include "QueryFileHandler.h"
 
+
+#include <sstream>
 #include <thread>  // for std::this_thread::sleep_for
+#include <cppconn/statement.h> 
+
 namespace QueryGeneration {}
 
+// Function to read credentials from the file
+std::map<std::string, std::string> readCredentials(const std::string& filename) {
+    std::map<std::string, std::string> credentials;
+    std::ifstream file(filename);
+
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            std::istringstream iss(line);
+            std::string key, value;
+            if (iss >> key >> value) {
+                credentials[key] = value;
+            }
+        }
+        file.close();
+    }
+
+    return credentials;
+}
+
 int main(int argc, char *argv[]) {
-    if (argc != 5) {
-        std::cerr << "Usage: " << argv[0] << " --user <username> --password <password>" << std::endl;
+    // Read credentials from the file
+    std::map<std::string, std::string> credentials = readCredentials("credentials.txt");
+
+    // Check if all required credentials are present
+    if (credentials.find("host") == credentials.end() ||
+        credentials.find("port") == credentials.end() ||
+        credentials.find("user") == credentials.end() ||
+        credentials.find("password") == credentials.end()) {
+        std::cerr << "Invalid or incomplete credentials in the file." << std::endl;
         return 1;
     }
 
-    std::map<std::string, std::string> args;
-    for (int i = 1; i < argc; i += 2) {
-        args[argv[i]] = argv[i + 1];
-    }
+    const std::string host = credentials["host"];
+    const std::string port = credentials["port"];
+    const std::string user = credentials["user"];
+    const std::string password = credentials["password"];
 
-    if (args.find("--user") == args.end() || args.find("--password") == args.end()) {
-        std::cerr << "Invalid arguments. Usage: " << argv[0] << " --user <username> --password <password>" << std::endl;
-        return 1;
-    }
-
-    const std::string host = "127.0.0.1";
-    const std::string user = args["--user"];
-    const std::string password = args["--password"];
-
-    QueryGeneration :: DatabaseHandler dbHandler(host, user, password);
+    QueryGeneration :: DatabaseHandler dbHandler(host, port, user, password);
 
     if (dbHandler.connect()) {
 
@@ -72,13 +94,12 @@ int main(int argc, char *argv[]) {
 
             std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait for 5 seconds
 
-            // Read and execute queries from the file
-            QueryGeneration :: LogFileHandler::startTimer();
-            dbHandler.executeQueriesFromFile(queryFileName);
-            QueryGeneration :: LogFileHandler::stopTimer();
+            dbHandler.enableQueryProfiling();
+            dbHandler.executeQueriesFromFile(queryFileName);  // Read and execute queries from the file
 
-            QueryGeneration :: LogFileHandler::log("log.txt", "Total execution time: " + std::to_string(QueryGeneration :: LogFileHandler::getElapsedTime()) + " seconds");
+            double totalExecutionTime = dbHandler.getTotalExecutionTime();
 
+            QueryGeneration :: LogFileHandler::log("log.txt", "Total execution time in Local Machine: " + std::to_string(totalExecutionTime) + " seconds");
             QueryGeneration :: LogFileHandler::closeLogFile("log.txt");
         }
     }

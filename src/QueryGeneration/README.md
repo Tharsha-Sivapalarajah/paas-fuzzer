@@ -17,6 +17,6 @@ This is the Query Generator Application to generate dynamic MySQL queries, store
    g++ -o main DatabaseHandler.cpp QueryGenerator.cpp LogFileHandler.cpp QueryFileHandler.cpp main.cpp -I/path/to/include/folder/QueryGeneration -lmysqlcppconn
 
 4. **Run the project:**
-   ./main --user your_mysql_username --password your_mysql_password
+   ./main
 
 

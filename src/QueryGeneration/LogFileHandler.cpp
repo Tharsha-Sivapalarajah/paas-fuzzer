@@ -39,19 +39,4 @@ namespace QueryGeneration {
         // Log file is closed automatically when ofstream object goes out of scope
         return true;
     }
-
-
-    bool LogFileHandler::startTimer() {
-        startTime = std::chrono::high_resolution_clock::now();
-        return true;
-    }
-
-    bool LogFileHandler::stopTimer() {
-        stopTime = std::chrono::high_resolution_clock::now();
-        return true;
-    }
-
-    double LogFileHandler::getElapsedTime() {
-        return std::chrono::duration<double>(stopTime - startTime).count();
-    }
 }

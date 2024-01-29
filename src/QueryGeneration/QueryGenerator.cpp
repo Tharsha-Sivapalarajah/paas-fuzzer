@@ -37,5 +37,5 @@ namespace QueryGeneration {
 
     std::string QueryGenerator::generateUseDatabaseQuery(const std::string& dbName) {
         return "USE " + dbName;
-    }
+    } 
 }

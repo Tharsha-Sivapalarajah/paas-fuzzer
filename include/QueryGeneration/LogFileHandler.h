@@ -18,10 +18,6 @@ namespace QueryGeneration {
         static bool log(const std::string& fileName, const std::string& message);
         static bool clearLogFile(const std::string& fileName);
         static bool closeLogFile(const std::string& fileName);
-
-        static bool startTimer();
-        static bool stopTimer();
-        static double getElapsedTime();
     };
 }
 
