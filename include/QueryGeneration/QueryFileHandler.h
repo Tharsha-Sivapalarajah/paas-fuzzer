@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <thread> 
+
 #include <mysql_driver.h>
 #include <cppconn/connection.h>
 #include <cppconn/statement.h>

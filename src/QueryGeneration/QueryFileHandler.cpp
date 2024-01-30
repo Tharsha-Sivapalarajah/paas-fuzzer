@@ -48,6 +48,14 @@ namespace QueryGeneration {
 
             for (const auto& query : queries) {
                 statement->execute(query);
+
+                // Ensure any remaining result sets are closed
+                do {
+                    sql::ResultSet *res = statement->getResultSet();
+                    if (res != nullptr) {
+                        res->close();
+                    }
+                } while (statement->getMoreResults());
             }
 
             delete statement;

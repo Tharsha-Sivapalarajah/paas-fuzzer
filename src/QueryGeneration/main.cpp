@@ -65,28 +65,42 @@ int main(int argc, char *argv[]) {
 
                 for (int i = 0; i < 1; ++i) {
                     std::string dbName = "database_" + std::to_string(i);
-                    queries.push_back(QueryGeneration :: QueryGenerator::generateDropDatabaseQuery(dbName));
+                    queries.push_back(QueryGeneration::QueryGenerator::generateDropDatabaseQuery(dbName));
 
-                    QueryGeneration :: QueryFileHandler::clearQueryFile(queryFileName);
-                    QueryGeneration :: QueryFileHandler::createQueryFile(queryFileName);
+                    QueryGeneration::QueryFileHandler::clearQueryFile(queryFileName);
+                    QueryGeneration::QueryFileHandler::createQueryFile(queryFileName);
 
                     // Generate queries and add them to the vector
-                    queries.push_back(QueryGeneration :: QueryGenerator::generateCreateDatabaseQuery(dbName));
-                    queries.push_back(QueryGeneration :: QueryGenerator::generateUseDatabaseQuery(dbName));
+                    queries.push_back(QueryGeneration::QueryGenerator::generateCreateDatabaseQuery(dbName));
+                    queries.push_back(QueryGeneration::QueryGenerator::generateUseDatabaseQuery(dbName));
 
                     for (int j = 0; j < 5; ++j) {
                         std::string tableName = "table_" + std::to_string(j);
-                        queries.push_back(QueryGeneration :: QueryGenerator::generateCreateTableQuery(tableName));
+                        queries.push_back(QueryGeneration::QueryGenerator::generateCreateTableQuery(tableName));
 
                         for (int k = 0; k < 5; ++k) {
                             int randomId = rand() % 1000;
                             std::string randomName = "Name_" + std::to_string(randomId);
-                            queries.push_back(QueryGeneration :: QueryGenerator::generateInsertQuery(tableName, randomId, randomName));
+                            queries.push_back(QueryGeneration::QueryGenerator::generateInsertQuery(tableName, randomId, randomName));
                         }
 
-                        queries.push_back(QueryGeneration :: QueryGenerator::generateAdvancedQuery(tableName));
+                        // Add SELECT, WHERE, ORDER BY, and JOIN queries
+                        std::vector<std::string> columnsToSelect = {"field1", "field2", "field3"};
+                        queries.push_back(QueryGeneration::QueryGenerator::generateSelectQuery(tableName, columnsToSelect));
+
+                        std::string whereCondition = "field2 > 50";
+                        queries.push_back(QueryGeneration::QueryGenerator::generateWhereQuery(tableName, whereCondition));
+
+                        std::string orderByColumn = "field3 DESC";
+                        queries.push_back(QueryGeneration::QueryGenerator::generateOrderByQuery(tableName, orderByColumn));
+
+                        if (j != 0){
+                            std::string joinCondition = "table_0.id = table_" + std::to_string(j) + ".id";
+                            queries.push_back(QueryGeneration::QueryGenerator::generateJoinQuery("table_0", tableName, joinCondition));
+                        }
                     }
                 }
+
 
                 // Write the queries to the file
                 QueryGeneration :: QueryFileHandler::writeQueriesToFile(queryFileName, queries);
@@ -96,7 +110,6 @@ int main(int argc, char *argv[]) {
 
             dbHandler.enableQueryProfiling();
             dbHandler.executeQueriesFromFile(queryFileName);  // Read and execute queries from the file
-
             double totalExecutionTime = dbHandler.getTotalExecutionTime();
 
             QueryGeneration :: LogFileHandler::log("log.txt", "Total execution time in Local Machine: " + std::to_string(totalExecutionTime) + " seconds");
