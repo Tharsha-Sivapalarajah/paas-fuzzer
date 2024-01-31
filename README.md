@@ -16,15 +16,16 @@ Developing a fuzzing framework for testing the scheduler module of container orc
 
 ![Methodology of Fuzzing Cloud PaaS Platforms](static/Operation-flow.png)
 
-### Team Members
+### Contributors
 
-Students:
+Principal Investigators:
+
+- [Dr. Sunimal Rathnayake](https://sunimalr.staff.uom.lk) - University of Moratuwa <br>
+- [Dr. Ridwan Shariffdeen](https://rshariffdeen.com) - National University of Singapore <br>
+
+
+Developers:
 
 - [Kabilan Mahathevan](https://github.com/KabilanMA) <br>
 - [Tharsha Sivapalarajah](https://github.com/Tharsha-Sivapalarajah) <br>
 - [Sivakajan Sivaparan](https://github.com/sivakajan-tech) <br>
-
-Supervisors:
-
-- [Dr. Sunimal Rathnayake](https://sunimalr.staff.uom.lk) - University of Moratuwa <br>
-- [Dr. Ridwan Shariffdeen](https://rshariffdeen.com) - National University of Singapore <br>
