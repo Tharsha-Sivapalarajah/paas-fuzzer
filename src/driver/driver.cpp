@@ -23,6 +23,8 @@ void updatePatches(std::vector<driver::Patch> &patches, scheduler::ClusterAccess
     }
 
     driver::JsonFileHandler jsonFH;
+    apiClient_t *apiClient;
+    clusterAccess.createAPI_client(&apiClient);
     while (true)
     {
         for (driver::Patch &patch : patches)
@@ -30,7 +32,8 @@ void updatePatches(std::vector<driver::Patch> &patches, scheduler::ClusterAccess
             // std::cout << patch.getValue() << std::endl;
             cJSON *previousConfig = cJSON_Parse(cJSON_Print(initialConfig));
             auto startTime = std::chrono::high_resolution_clock::now();
-            clusterAccess.patch(&initialConfig, NULL, "default", patch, verbose);
+            clusterAccess.patch(&initialConfig, apiClient, "default", patch, verbose);
+            bool isBuggyPatch = false;
             while (!clusterAccess.isPropagationComplete(initialConfig, patch, verbose))
             {
                 auto endTime = std::chrono::high_resolution_clock::now();
@@ -39,16 +42,27 @@ void updatePatches(std::vector<driver::Patch> &patches, scheduler::ClusterAccess
                 {
                     // bug identified
                     jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
-
-                    break;
+                    clusterAccess.reset(previousConfig, apiClient, "default", verbose);
+                    goto exitOuterLoop;
                 }
 
-                if (clusterAccess.bugExists())
+                if (clusterAccess.bugExists(initialConfig, apiClient, "default", verbose))
                 {
                     jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
-                    clusterAccess.reset();
+                    clusterAccess.reset(previousConfig, NULL, "default", verbose);
+                    goto exitOuterLoop;
                 }
             }
+
+            if (clusterAccess.bugExists(initialConfig, apiClient, "default", verbose))
+            {
+                jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
+                clusterAccess.reset(previousConfig, NULL, "default", verbose);
+                break;
+            }
+
+        exitOuterLoop:
+
             auto endTime = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
             patch.setScore(duration.count());
@@ -97,6 +111,13 @@ int main(int argc, char *argv[])
     printf("-----------------------------------------\n");
 
     cJSON *originalJson = fileHandler.createJSONObject(filePath);
+
+    // cJSON *checkJson = fileHandler.createJSONObject(argv[2]);
+    // std::vector<std::string> keys = {};
+    // std::cout << fileHandler.compareCJSONObjects(originalJson, checkJson, keys) << std::endl;
+
+    // cJSON_Delete(checkJson);
+
     if (verbose > 10)
     {
         printf("Original JSON Input File\n-----------------------------------------\n");
@@ -108,7 +129,7 @@ int main(int argc, char *argv[])
 
     std::vector<std::vector<std::string>> patchableKeys = {};
     fileHandler.createConfigFile(inputJson, {}, patchableKeys);
-
+    // std::cout << "AS" << std::endl;
     configGenerator.createPatches(inputJson, patchableKeys, patches, verbose);
 
     if (verbose > 10)

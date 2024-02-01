@@ -155,7 +155,7 @@ namespace driver
                     enumValues = enumValues->next;
                 }
                 std::string initialValue = createEnumPatch(keys, patches, enums);
-                std::cout << initialValue << std::endl;
+                // std::cout << initialValue << std::endl;
                 cJSON_ReplaceItemInObject(currentItem, keys[keys.size() - 1].c_str(), cJSON_CreateString(initialValue.c_str()));
             }
             else if (strcmp(patchType, "\"string\"") == 0)

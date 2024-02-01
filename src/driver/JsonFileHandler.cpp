@@ -47,58 +47,107 @@ namespace driver
         return root;
     }
 
-    int JsonFileHandler::compareCJSONObjects(cJSON *obj1, cJSON *obj2)
+    bool JsonFileHandler::compareCJSONObjects(cJSON *obj1, cJSON *obj2, std::vector<std::string> &keys)
     {
-        // Check if the types are the same
-        if (obj1->type != obj2->type)
+        cJSON *currentItem_obj1 = obj1->child;
+        while (currentItem_obj1 != NULL)
         {
-            return 0; // Not equal
-        }
-
-        // Check values based on type
-        switch (obj1->type)
-        {
-        case cJSON_Object:
-        case cJSON_Array:
-        {
-            // Check the number of elements
-            if (cJSON_GetArraySize(obj1) != cJSON_GetArraySize(obj2))
+            if (currentItem_obj1->type == cJSON_String || currentItem_obj1->type == cJSON_Number)
             {
-                return 0; // Not equal
-            }
-
-            // Recursively compare each element
-            cJSON *item1 = obj1->child;
-            cJSON *item2 = obj2->child;
-
-            while (item1 != NULL && item2 != NULL)
-            {
-                if (!compareCJSONObjects(item1, item2))
+                keys.push_back(currentItem_obj1->string);
+                cJSON *temp = obj2;
+                for (size_t i = 0; i < keys.size(); i++)
                 {
-                    return 0; // Not equal
+                    auto &key = keys[i];
+                    if (isInteger(key))
+                    {
+                        temp = cJSON_GetArrayItem(temp, std::stoi(key));
+                    }
+                    else
+                    {
+                        temp = cJSON_GetObjectItem(temp, const_cast<char *>(key.c_str()));
+                    }
                 }
-                item1 = item1->next;
-                item2 = item2->next;
+
+                if (currentItem_obj1->type == cJSON_String)
+                {
+                    if (strcmp(currentItem_obj1->valuestring, temp->valuestring) != 0)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (currentItem_obj1->valueint != temp->valueint)
+                    {
+                        return false;
+                    }
+                }
+                keys.pop_back();
             }
+            else if (currentItem_obj1->type == cJSON_Object)
+            {
+                keys.push_back(currentItem_obj1->string);
+                if (!compareCJSONObjects(currentItem_obj1, obj2, keys))
+                    return false;
+                keys.pop_back();
+            }
+            else if (currentItem_obj1->type == cJSON_Array)
+            {
+                int count = 0;
+                cJSON *currentArrayElement = currentItem_obj1->child;
+                while (currentArrayElement != NULL)
+                {
+                    keys.push_back(currentItem_obj1->string);
+                    keys.push_back(std::to_string(count));
+                    if (currentArrayElement->type == cJSON_Object)
+                    {
+                        if (!compareCJSONObjects(currentArrayElement, obj2, keys))
+                            return false;
+                        keys.pop_back();
+                        keys.pop_back();
+                    }
+                    else
+                    {
+                        cJSON *temp = obj2;
+                        for (size_t i = 0; i < keys.size(); i++)
+                        {
+                            auto &key = keys[i];
+                            if (isInteger(key))
+                            {
+                                temp = cJSON_GetArrayItem(temp, std::stoi(key));
+                            }
+                            else
+                            {
+                                temp = cJSON_GetObjectItem(temp, const_cast<char *>(key.c_str()));
+                            }
+                        }
 
-            return 1; // Equal
+                        if (temp->type == cJSON_String)
+                        {
+                            if (strcmp(temp->valuestring, currentArrayElement->valuestring) != 0)
+                            {
+                                return false;
+                            }
+                        }
+                        else if (temp->type == cJSON_Number)
+                        {
+                            if (temp->valueint != currentArrayElement->valueint)
+                            {
+                                return false;
+                            }
+                        }
+                        keys.pop_back();
+                        keys.pop_back();
+                    }
+                    currentArrayElement = currentArrayElement->next;
+                    count++;
+                }
+            }
+            // Move to the next item
+            currentItem_obj1 = currentItem_obj1->next;
         }
-
-        case cJSON_String:
-            return (strcmp(obj1->valuestring, obj2->valuestring) == 0);
-
-        case cJSON_Number:
-            return (obj1->valuedouble == obj2->valuedouble);
-
-        case cJSON_True:
-        case cJSON_False:
-            return (obj1->valueint == obj2->valueint);
-
-        case cJSON_NULL:
-            return 1; // Equal
-        }
-
-        return 0; // Not equal
+        return true;
     }
 
     cJSON *JsonFileHandler::createConfigFile(const cJSON *inputJson, std::vector<std::string> keys, std::vector<std::vector<std::string>> &patchableKeys)
