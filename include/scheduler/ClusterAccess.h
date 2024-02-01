@@ -9,6 +9,8 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <errno.h>
+#include <thread>
+#include <chrono>
 
 #include <json/json.h>
 extern "C"
@@ -39,15 +41,16 @@ namespace scheduler
         bool get_namespaced_events(apiClient_t *apiClient, std::string pod_name, std::string name_space, int verbose) const;
         cJSON *get_namespaced_deployment(cJSON *jsonData, apiClient_t *apiClient, std::string _namespace, int verbose) const;
         bool isPropagationComplete(cJSON *initialConfig, driver::Patch &patch, int verbose);
-        bool bugExists() const;
-        bool reset() const;
+        bool bugExists(cJSON *initialConfig, apiClient_t *apiClient, std::string _namespace, int verbose) const;
+        bool reset(cJSON *initialConfig, apiClient_t *apiClient, std::string _namespace, int verbose) const;
+        bool createAPI_client(apiClient_t **apiClient) const;
 
     private:
-        bool createAPI_client(apiClient_t **apiClient) const;
         bool deletePod(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
         bool createPod(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
         bool deleteDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
         bool createDeployment(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
         bool patchDeployment(apiClient_t *apiClient, cJSON **jsonData, char *namespc, driver::Patch &patch, int verbose) const;
+        bool compareConfigFile(cJSON *baseConfig, cJSON *checkConfig, int verbose) const;
     };
 };

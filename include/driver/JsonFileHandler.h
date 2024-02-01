@@ -80,7 +80,7 @@ namespace driver
 
         void modifyPatch(cJSON *jsonData, driver::Patch patch) const;
 
-        int compareCJSONObjects(cJSON *obj1, cJSON *obj2);
+        bool compareCJSONObjects(cJSON *obj1, cJSON *obj2, std::vector<std::string> &keys);
 
         bool isPatchIncluded(cJSON *jsonData, Patch &patch, int verbose) const;
 
