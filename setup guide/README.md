@@ -8,25 +8,39 @@ The PaaS Fuzzer is a C++-based system utilized for fuzzing Kubernetes to uncover
 
 ## Project File Structure (recomended)
 Below is a recommended directory structure for the Pass-Fuzzer application, including necessary external libraries and clients:
+
 ```
-PASS-FUZZER 
-│
-└───c
-│
-└───libwebsockets
-│
-└───pass-fuzzer
-    |   data/
-    |   include/
-    |   setup-guige/
-    |   src/
-    │       driver/
-    │       ...
-    │   CMakeLists.txt
-    │   toolchain.cmake
+📦 PASS-FUZZER 
+ ┣ 📂 c
+ ┣ 📂 libwebsockets
+ ┣ 📂 pass-fuzzer
+   ┗ 📂 data
+   ┗ 📂 include
+   ┗ 📂 setup-guide
+   ┗ 📂 src
+   ┃  ┗ 📂 driver
+   ┃  ┗ 📂 QueryGeneration
+   ┃    .....
+   ┗ 📂 static
+   ┗ 📂 vcpkg
+   ┗ 📜 CMakeLists.txt
+   ┗ 📜 toolchain.cmake
 ```
 
 ## Step-by-step guide
 1. Setup the Kubernetes c client inside the main directory(PASS-FUZZER)
-   1. Run the Script `./setup-k8s-c-client.sh`.
-2.  
+   * Run the Script `./setup-k8s-c-client.sh`.
+  
+    >  ***Note:*** The provided shell script will guide you through installing the ***Kubernetes C client*** in the parent directory (please refer to the script for details).
+
+   <br>
+2. Build the system
+   *  Build by making a build directory (i.e. `build/`), run `cmake` in `drive` directory, and then use `make` to build the target.
+  
+   ```
+    cd ../src/driver
+    mkdir build && cd build
+    cmake ..
+    make
+   ```
+   And then you can run the system by `.\ConfigGenerator`

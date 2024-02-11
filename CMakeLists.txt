@@ -26,6 +26,7 @@ link_directories("./vcpkg/installed/x64-linux/lib")
 # Link against the jsoncpp library
 target_link_libraries(ConfigGenerator 
     PRIVATE
+    {CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-linux/lib/libjsoncpp.a
     /home/kabilan/Desktop/FYP/implementation/implementation-2/paas-fuzzer/vcpkg/installed/x64-linux/lib/libjsoncpp.a
     /home/kabilan/Desktop/FYP/implementation/implementation-2/paas-fuzzer/vcpkg/installed/x64-linux/lib/libkubernetes.a
 )
