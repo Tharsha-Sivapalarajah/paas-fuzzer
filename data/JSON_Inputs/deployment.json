@@ -60,23 +60,6 @@
                 "ubuntu:latest"
               ]
             },
-            "resizePolicy": [
-              {
-                "resourceName": "cpu",
-                "restartPolicy": "NotRequired"
-              },
-              {
-                "resourceName": "memory",
-                "restartPolicy": {
-                  "operation": "patch",
-                  "type": "enum",
-                  "values": [
-                    "RestartContainer",
-                    "NotRequired"
-                  ]
-                }
-              }
-            ],
             "resources": {
               "limits": {
                 "cpu": {
