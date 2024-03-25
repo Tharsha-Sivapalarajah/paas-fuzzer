@@ -17,6 +17,24 @@
         "app": "bash"
       }
     },
+    "strategy": {
+      "rollingUpdate": {
+        "maxSurge": {
+          "operation": "patch",
+          "type": "int",
+          "start": 1,
+          "end": 3,
+          "step": 1
+        },
+        "maxUnavailable": {
+          "operation": "patch",
+          "type": "int",
+          "start": 1,
+          "end": 3,
+          "step": 1
+        }
+      }
+    },
     "template": {
       "metadata": {
         "labels": {
@@ -27,7 +45,9 @@
         "restartPolicy": {
           "operation": "patch",
           "type": "enum",
-          "values": ["Always", "Never"]
+          "values": [
+            "Always"
+          ]
         },
         "containers": [
           {
@@ -35,21 +55,10 @@
             "image": {
               "operation": "patch",
               "type": "enum",
-              "values": ["ubuntu:21.04", "ubuntu:latest"]
-            },
-            "resources": {
-              "limits": {
-                "cpu": {
-                  "operation": "patch",
-                  "type": "enum",
-                  "values": ["300M", "200Mi"]
-                },
-                "memory": {
-                  "operation": "patch",
-                  "type": "enum",
-                  "values": ["200M", "300Mi"]
-                }
-              }
+              "values": [
+                "ubuntu:21.04",
+                "ubuntu:latest"
+              ]
             },
             "resizePolicy": [
               {
@@ -61,33 +70,45 @@
                 "restartPolicy": {
                   "operation": "patch",
                   "type": "enum",
-                  "values": ["RestartContainer", "NotRequired"]
+                  "values": [
+                    "RestartContainer",
+                    "NotRequired"
+                  ]
                 }
               }
             ],
-            "command": ["tail", "-f", "/dev/null"]
+            "resources": {
+              "limits": {
+                "cpu": {
+                  "operation": "patch",
+                  "type": "enum",
+                  "values": [
+                    "300M",
+                    "200Mi"
+                  ]
+                },
+                "memory": "700"
+              }
+            },
+            "command": [
+              "tail",
+              "-f",
+              "/dev/null"
+            ]
           }
         ],
         "initContainers": [
           {
             "name": "init-1",
             "image": "ubuntu",
-            "command": ["sh", "-c", "sleep 1s \n"],
+            "command": [
+              "sh",
+              "-c",
+              "sleep 1s \n"
+            ],
             "restartPolicy": "Always"
           }
-        ],
-        "securityContext": {
-          "sysctls": [
-            {
-              "name": {
-                "operation": "patch",
-                "type": "enum",
-                "values": ["net.core.somaxconn", "net.core.somaxcon"]
-              },
-              "value": "10000"
-            }
-          ]
-        }
+        ]
       }
     }
   }
