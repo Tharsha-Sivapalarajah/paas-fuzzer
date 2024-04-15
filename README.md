@@ -104,6 +104,7 @@ To run the Tool, run the following command:
 .\ConfigGenerator ../../data/JSON_Inputs/deployment.json --verbose=12
 ```
 
+For further details, find the attachment in the `./setup guide` directory
 
 [Back to Table of Contents](#table-of-contents)
 
@@ -180,25 +181,3 @@ Developing a fuzzing framework for testing the scheduler module of container orc
 ### Commands
 
 `minikube start --extra-config=kubelet.allowed-unsafe-sysctls=net.core.somaxconn`
-
-
-### Setup
-Find the attachment in the `./setup guide` directory
-
-### Methodology
-
-![Methodology of Fuzzing Cloud PaaS Platforms](static/Operation-flow.png)
-
-### Contributors
-
-Principal Investigators:
-
-- [Dr. Sunimal Rathnayake](https://sunimalr.staff.uom.lk) - University of Moratuwa <br>
-- [Dr. Ridwan Shariffdeen](https://rshariffdeen.com) - National University of Singapore <br>
-
-
-Developers:
-
-- [Kabilan Mahathevan](https://github.com/KabilanMA) <br>
-- [Tharsha Sivapalarajah](https://github.com/Tharsha-Sivapalarajah) <br>
-- [Sivakajan Sivaparan](https://github.com/sivakajan-tech) <br>
