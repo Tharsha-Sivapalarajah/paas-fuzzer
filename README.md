@@ -101,7 +101,7 @@ Build by making a build directory (i.e. `build/`), run `cmake` in `drive` direct
 To run the Tool, run the following command:
 
 ```
-.\ConfigGenerator ../../
+.\ConfigGenerator ../../data/JSON_Inputs/deployment.json --verbose=12
 ```
 
 
