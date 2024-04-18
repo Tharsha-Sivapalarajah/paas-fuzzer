@@ -1,0 +1,98 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "bash"
+  },
+  "spec": {
+    "replicas": {
+      "operation": "patch",
+      "type": "int",
+      "start": 1,
+      "end": 5,
+      "step": 3
+    },
+    "selector": {
+      "matchLabels": {
+        "app": "bash"
+      }
+    },
+    "strategy": {
+      "rollingUpdate": {
+        "maxSurge": {
+          "operation": "patch",
+          "type": "int",
+          "start": 1,
+          "end": 3,
+          "step": 1
+        },
+        "maxUnavailable": {
+          "operation": "patch",
+          "type": "int",
+          "start": 1,
+          "end": 3,
+          "step": 1
+        }
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "bash"
+        }
+      },
+      "spec": {
+        "restartPolicy": {
+          "operation": "patch",
+          "type": "enum",
+          "values": [
+            "Always"
+          ]
+        },
+        "containers": [
+          {
+            "name": "bash",
+            "image": {
+              "operation": "patch",
+              "type": "enum",
+              "values": [
+                "ubuntu:21.04",
+                "ubuntu:latest"
+              ]
+            },
+            "resources": {
+              "limits": {
+                "cpu": {
+                  "operation": "patch",
+                  "type": "enum",
+                  "values": [
+                    "300M",
+                    "200Mi"
+                  ]
+                },
+                "memory": "700"
+              }
+            },
+            "command": [
+              "tail",
+              "-f",
+              "/dev/null"
+            ]
+          }
+        ],
+        "initContainers": [
+          {
+            "name": "init-1",
+            "image": "ubuntu",
+            "command": [
+              "sh",
+              "-c",
+              "sleep 1s \n"
+            ],
+            "restartPolicy": "Always"
+          }
+        ]
+      }
+    }
+  }
+}
