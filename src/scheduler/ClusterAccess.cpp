@@ -99,7 +99,7 @@ namespace scheduler
         }
 
         char *podName = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "metadata"), "name"));
-        v1_pod_t *pod = CoreV1API_deleteNamespacedPod(apiClient, podName, _namespace, NULL, NULL, 30, 0, NULL, NULL);
+        v1_pod_t *pod = CoreV1API_deleteNamespacedPod(apiClient, podName, _namespace, NULL, NULL, 0, 0, NULL, NULL);
 
         if (pod)
         {
@@ -123,7 +123,7 @@ namespace scheduler
                 return false;
             }
         }
-        core_v1_event_list_t *event_list = CoreV1API_listNamespacedEvent(apiClient, const_cast<char *>(_namespace.c_str()), NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, 60, 0, 0);
+        core_v1_event_list_t *event_list = CoreV1API_listNamespacedEvent(apiClient, const_cast<char *>(_namespace.c_str()), NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, 0, 0, 0);
         std::cout << (char *)(event_list->items->firstEntry->data) << std::endl;
         return true;
     }
@@ -226,6 +226,7 @@ namespace scheduler
         // std::cout << output << std::endl;
 
         fileHandler.modifyPatch(*jsonData, patch);
+        // std::cout << cJSON_Print(*jsonData) << std::endl;
         return true;
     }
 
@@ -303,10 +304,10 @@ namespace scheduler
         }
 
         std::string deployment_name = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "metadata"), "name")->valuestring;
-        genericClient_t *genericClient = genericClient_create(apiClient, "apps", "v1", "deployments");
+        // genericClient_t *genericClient = genericClient_create(apiClient, "apps", "v1", "deployments");
 
-        char labelSelector[100];
-        snprintf(labelSelector, sizeof(labelSelector), "app.kubernetes.io/name=%s", deployment_name.c_str());
+        // char labelSelector[100];
+        // snprintf(labelSelector, sizeof(labelSelector), "app.kubernetes.io/name=%s", deployment_name.c_str());
 
         v1_deployment_t *updatedDeployment = AppsV1API_readNamespacedDeployment(apiClient, const_cast<char *>(deployment_name.c_str()), const_cast<char *>(_namespace.c_str()), NULL);
 
@@ -344,33 +345,96 @@ namespace scheduler
         int loop = 0;
         int previous_pod_count = 0;
         int current_pod_count = 0;
-        v1_pod_list_t *pod_list;
+        int current_pod_count_all = 0;
+        v1_pod_list_t *pod_list = NULL;
+        v1_pod_list_t *pod_list_all = NULL;
 
+        int desiredReplicaCount = cJSON_GetObjectItem(cJSON_GetObjectItem(initialConfig, "spec"), "replicas")->valueint;
+
+        char fieldSelector[100] = "status.phase=Running";
+        bool loopBreaker = false;
         do
         {
             previous_pod_count = current_pod_count;
             std::chrono::milliseconds sleepDuration(1000);
             std::this_thread::sleep_for(sleepDuration);
-            pod_list = CoreV1API_listNamespacedPod(apiClient,
-                                                   const_cast<char *>(_namespace.c_str()), /*namespace */
-                                                   NULL,                                   /* pretty */
-                                                   0,                                      /* allowWatchBookmarks */
-                                                   NULL,                                   /* continue */
-                                                   NULL,                                   /* fieldSelector */
-                                                   NULL,                                   /* labelSelector */
-                                                   0,                                      /* limit */
-                                                   NULL,                                   /* resourceVersion */
-                                                   NULL,                                   /* resourceVersionMatch */
-                                                   0,                                      /* sendInitialEvents */
-                                                   0,                                      /* timeoutSeconds */
-                                                   0                                       /* watch */
-            );
-            current_pod_count = pod_list->items->count;
-            loop++;
-        } while (loop < 5 && previous_pod_count <= current_pod_count);
+            do
+            {
+                pod_list = CoreV1API_listNamespacedPod(apiClient,
+                                                       const_cast<char *>(_namespace.c_str()), /*namespace */
+                                                       NULL,                                   /* pretty */
+                                                       0,                                      /* allowWatchBookmarks */
+                                                       NULL,                                   /* continue */
+                                                       fieldSelector,                          /* fieldSelector */
+                                                       NULL,                                   /* labelSelector */
+                                                       0,                                      /* limit */
+                                                       NULL,                                   /* resourceVersion */
+                                                       NULL,                                   /* resourceVersionMatch */
+                                                       0,                                      /* sendInitialEvents */
+                                                       0,                                      /* timeoutSeconds */
+                                                       0                                       /* watch */
+                );
+            } while (pod_list == NULL);
 
-        std::cout << previous_pod_count << ":" << current_pod_count << std::endl;
-        if (loop == 5 && previous_pod_count != current_pod_count)
+            current_pod_count = pod_list->items->count;
+
+            do
+            {
+                pod_list_all = CoreV1API_listNamespacedPod(apiClient,
+                                                           const_cast<char *>(_namespace.c_str()), /*namespace */
+                                                           NULL,                                   /* pretty */
+                                                           0,                                      /* allowWatchBookmarks */
+                                                           NULL,                                   /* continue */
+                                                           NULL,                                   /* fieldSelector */
+                                                           NULL,                                   /* labelSelector */
+                                                           0,                                      /* limit */
+                                                           NULL,                                   /* resourceVersion */
+                                                           NULL,                                   /* resourceVersionMatch */
+                                                           0,                                      /* sendInitialEvents */
+                                                           0,                                      /* timeoutSeconds */
+                                                           0                                       /* watch */
+                );
+            } while (pod_list_all == NULL);
+            current_pod_count_all = pod_list->items->count;
+
+            if (desiredReplicaCount != current_pod_count)
+            {
+                if (current_pod_count_all != current_pod_count)
+                {
+                    if (loop > 10)
+                    {
+                        loopBreaker = true;
+                    }
+                }
+                else
+                {
+                    loop++;
+                }
+            }
+            else
+            {
+                loopBreaker = true;
+            }
+        } while (!loopBreaker);
+
+        std::cout << desiredReplicaCount << ":" << current_pod_count_all << ":" << current_pod_count << std::endl;
+
+        auto startTime = std::chrono::high_resolution_clock::now();
+
+        while (current_pod_count_all != current_pod_count)
+        {
+            std::chrono::milliseconds sleepDuration(2000);
+            std::this_thread::sleep_for(sleepDuration);
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+            if (duration.count() > driver::WAIT_TIME_MILLI_SEC)
+            {
+                break;
+            }
+        }
+
+        if ((desiredReplicaCount != current_pod_count) || (current_pod_count_all != current_pod_count))
         {
             printf("Resource bug detected\n");
             // resource bugs detected
@@ -379,16 +443,21 @@ namespace scheduler
 
         // -> check the initial config file values with deployment values
 
-        cJSON *deploymentConfig = get_namespaced_deployment(initialConfig, apiClient, _namespace, verbose);
-
-        if (!compareConfigFile(initialConfig, deploymentConfig, verbose))
+        for (size_t i = 0; i < 5; i++)
         {
-
-            std::cout << "as" << std::endl;
-            return true;
+            cJSON *deploymentConfig = get_namespaced_deployment(initialConfig, apiClient, _namespace, verbose);
+            if ((!compareConfigFile(initialConfig, deploymentConfig, verbose)))
+            {
+                if (i != 4)
+                {
+                    std::chrono::milliseconds sleepDuration(1000);
+                    std::this_thread::sleep_for(sleepDuration);
+                    continue;
+                }
+                std::cout << "Etcd config and desired config didn't match" << std::endl;
+                return true;
+            }
         }
-
-        //     // check the deployed cJSON file with the deployment cJSON file.
 
         return false;
     }
@@ -440,8 +509,9 @@ namespace scheduler
 
     /**
      * @brief Things to check:
-     * 1. Confirm that required number of ready state replicas exist.
-     * 2. Confirm that the non-ready state replicas remains constant or have only a very small change.
+     * 1. Confirm that desired replicas are in the etcd
+     * 2. Confirm that the desired replicas and pods in Running state match.
+     * 3. Confirm that the patch is included in the etcd for the resource.
      *
      * @param initialConfig
      * @param patch
@@ -486,61 +556,89 @@ namespace scheduler
         char fieldSelector[100] = "status.phase=Running";
 
         v1_pod_list_t *pod_list = NULL;
-        pod_list = CoreV1API_listNamespacedPod(apiClient,
-                                               _namespace,    /*namespace */
-                                               NULL,          /* pretty */
-                                               0,             /* allowWatchBookmarks */
-                                               NULL,          /* continue */
-                                               fieldSelector, /* fieldSelector */
-                                               NULL,          /* labelSelector */
-                                               0,             /* limit */
-                                               NULL,          /* resourceVersion */
-                                               NULL,          /* resourceVersionMatch */
-                                               0,             /* sendInitialEvents */
-                                               0,             /* timeoutSeconds */
-                                               0              /* watch */
-        );
+        do
+        {
+            pod_list = CoreV1API_listNamespacedPod(apiClient,
+                                                   _namespace,    /*namespace */
+                                                   NULL,          /* pretty */
+                                                   0,             /* allowWatchBookmarks */
+                                                   NULL,          /* continue */
+                                                   fieldSelector, /* fieldSelector */
+                                                   NULL,          /* labelSelector */
+                                                   0,             /* limit */
+                                                   NULL,          /* resourceVersion */
+                                                   NULL,          /* resourceVersionMatch */
+                                                   0,             /* sendInitialEvents */
+                                                   0,             /* timeoutSeconds */
+                                                   0              /* watch */
+            );
+        } while (pod_list == NULL);
 
-        // cJSON *pod_list_json =  v1_pod_list_convertToJSON(pod_list);
+        v1_pod_list_t *pod_list_all = NULL;
+        do
+        {
+            pod_list_all = CoreV1API_listNamespacedPod(apiClient,
+                                                       _namespace, /*namespace */
+                                                       NULL,       /* pretty */
+                                                       0,          /* allowWatchBookmarks */
+                                                       NULL,       /* continue */
+                                                       NULL,       /* fieldSelector */
+                                                       NULL,       /* labelSelector */
+                                                       0,          /* limit */
+                                                       NULL,       /* resourceVersion */
+                                                       NULL,       /* resourceVersionMatch */
+                                                       0,          /* sendInitialEvents */
+                                                       0,          /* timeoutSeconds */
+                                                       0           /* watch */
+            );
+        } while (pod_list_all == NULL);
 
         apiClient_free(apiClient);
 
         cJSON_free(currentState);
 
-        if (pod_list)
+        if (pod_list->items->count != pod_list_all->items->count)
         {
-            // printf("Get pod list:\n");
-            listEntry_t *listEntry = NULL;
-            v1_pod_t *pod = NULL;
-            // std::cout << pod_list->items->count << std::endl;
-            // std::cout << "ASASSASASASAS" << std::endl;
-
-            int podCount = 0;
-            list_ForEach(listEntry, pod_list->items)
-            {
-                pod = (v1_pod_t *)listEntry->data;
-                // printf("\tThe pod name: %s\n", pod->metadata->name);
-                podCount++;
-            }
-            // int podCount = pod_list->items->count;
-            // std::cout << "ASASSASASASAS" << std::endl;
-
-            v1_pod_list_free(pod_list);
-            // std::cout << "ASASSASASASAS" << std::endl;
-
-            // pod_list = NULL;
-            // std::cout << podCount << ":" << desiredReplicaCount << std::endl;
-            if (podCount != desiredReplicaCount)
-            {
-                // std::cout << "ASASSASASASAS" << std::endl;
-                return false;
-            }
+            printf("Running pods count do not match with Total Pods\n");
+            return false;
         }
-        else
+
+        if (pod_list->items->count != desiredReplicaCount)
+        {
+            printf("Running pods count do not match with Desired Count\n");
+            return false;
+        }
+
+        if (pod_list->items->count == 0)
         {
             printf("Cannot get any pod.\n");
             return false;
         }
+
+        // if (pod_list)
+        // {
+        //     listEntry_t *listEntry = NULL;
+        //     v1_pod_t *pod = NULL;
+
+        //     int podCount = 0;
+        //     list_ForEach(listEntry, pod_list->items)
+        //     {
+        //         pod = (v1_pod_t *)listEntry->data;
+        //         podCount++;
+        //     }
+
+        //     v1_pod_list_free(pod_list);
+
+        //     if (podCount != desiredReplicaCount)
+        //     {
+        //         return false;
+        //     }
+        // }
+        // else
+        // {
+        //     printf("Cannot get any pod.\n");
+        //     return false;
+        // }
 
         driver::JsonFileHandler fileHandler;
         if (!fileHandler.isPatchIncluded(currentState, patch, verbose))

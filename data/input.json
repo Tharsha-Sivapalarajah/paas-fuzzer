@@ -5,10 +5,16 @@
       "name": "busybox-deployment"
     },
     "spec": {
-      "replicas": {"operation":"patch", "type":"int", "start":1, "end": 5, "step":3},
+      "replicas": {"operation":"patch", "type":"int", "start":1, "end": 10, "step":3},
       "selector": {
         "matchLabels": {
           "app": "busybox"
+        }
+      },
+      "strategy": {
+        "rollingUpdate": {
+          "maxSurge": {"operation": "patch", "type": "int", "start": 1, "end": 3, "step": 1},
+          "maxUnavailable": {"operation": "patch", "type": "int", "start": 1, "end": 3, "step": 1}
         }
       },
       "template": {
@@ -21,10 +27,23 @@
           "containers": [
             {
               "name": "busybox-container",
-              "image": "busybox",
+              "image": {"operation":"patch", "type":"enum", "values": ["busybox:1.32", "busybox:1.34"]} ,
+              "resources": {
+                "limits": {
+                  "cpu": {"operation": "patch", "type": "enum", "values": [ "300m", "200m"]},
+                  "memory": {"operation": "patch", "type": "enum", "values": [ "128Mi", "256Mi"]}
+                }
+              },
               "command": ["sleep", "3600"]
             }
-          ]
+          ],
+          "initContainers": [
+          {
+            "name": "init-1",
+            "image": "busybox:1.34",
+            "command": ["sleep", "1"]
+          }
+        ]
         }
       }
     }
