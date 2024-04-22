@@ -506,6 +506,7 @@ namespace driver
 
             std::string previousConfig = directoryPath + "/" + randomFilePrefix + "_previous.json";
             std::string currentConfig = directoryPath + "/" + randomFilePrefix + "_current.json";
+            std::string permutationList = directoryPath + "/" + randomFilePrefix + "_permutation.json";
 
             // Write the JSON string to a file
             std::ofstream outputFilePrevious(previousConfig);
@@ -536,6 +537,9 @@ namespace driver
                 std::cerr << "Unable to open file for writing current config." << std::endl;
                 return false;
             }
+
+            driver::Evaluator evaluator;
+            evaluator.writeToFile(patches, permutationList);
 
             return true;
         }
