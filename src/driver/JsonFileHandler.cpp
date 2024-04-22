@@ -201,18 +201,36 @@ namespace driver
         return currentItem;
     }
 
+    // bool JsonFileHandler::isInteger(const std::string &s) const
+    // {
+    //     try
+    //     {
+    //         std::stoi(s);
+    //         return true;
+    //     }
+    //     catch (const std::invalid_argument &e)
+    //     {
+    //         return false;
+    //     }
+    //     catch (const std::out_of_range &e)
+    //     {
+    //         return false;
+    //     }
+    // }
+
     bool JsonFileHandler::isInteger(const std::string &s) const
     {
         try
         {
-            std::stoi(s);
-            return true;
+            size_t pos;
+            int value = std::stoi(s, &pos);
+            return pos == s.length();
         }
-        catch (const std::invalid_argument &e)
+        catch (const std::invalid_argument &)
         {
             return false;
         }
-        catch (const std::out_of_range &e)
+        catch (const std::out_of_range &)
         {
             return false;
         }
@@ -242,10 +260,12 @@ namespace driver
         if (isInteger(patch.getValue()))
         {
             cJSON_ReplaceItemInObject(currentItem, patchKeys[patchKeys.size() - 1].c_str(), cJSON_CreateNumber(std::stoi(patch.getValue())));
+            // std::cout << "Integer patch: " << patch.getValue() << std::endl;
         }
         else
         {
             cJSON_ReplaceItemInObject(currentItem, patchKeys[patchKeys.size() - 1].c_str(), cJSON_CreateString(patch.getValue().c_str()));
+            // std::cout << "String patch: " << patch.getValue() << std::endl;
         }
     }
 
@@ -486,6 +506,7 @@ namespace driver
 
             std::string previousConfig = directoryPath + "/" + randomFilePrefix + "_previous.json";
             std::string currentConfig = directoryPath + "/" + randomFilePrefix + "_current.json";
+            std::string permutationList = directoryPath + "/" + randomFilePrefix + "_permutation.json";
 
             // Write the JSON string to a file
             std::ofstream outputFilePrevious(previousConfig);
@@ -516,6 +537,9 @@ namespace driver
                 std::cerr << "Unable to open file for writing current config." << std::endl;
                 return false;
             }
+
+            driver::Evaluator evaluator;
+            evaluator.writeToFile(patches, permutationList);
 
             return true;
         }

@@ -14,6 +14,7 @@
 
 #include "Patch.h"
 #include "constant.h"
+#include "Evaluator.h"
 
 extern "C"
 {

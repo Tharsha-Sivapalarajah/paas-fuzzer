@@ -5,7 +5,7 @@ using namespace driver;
 namespace driver
 {
 
-    void writeToFile(const std::vector<Patch> &arr, const std::string &filename)
+    void Evaluator::writeToFile(const std::vector<Patch> &arr, const std::string &filename)
     {
         std::ofstream outfile(filename, std::ios::app);
         if (outfile.is_open())

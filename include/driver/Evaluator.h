@@ -23,6 +23,7 @@ namespace driver
     class Evaluator
     {
     public:
+        void writeToFile(const std::vector<Patch> &arr, const std::string &filename);
         void logPatches(std::vector<Patch> &patchArray, std::string LogFileName, int suffix);
         void logPatchInfo(std::vector<Patch> &patchArray);
     };

@@ -73,7 +73,9 @@
         "bitset": "cpp",
         "regex": "cpp",
         "*.inc": "cpp",
-        "corev1api.h": "c"
+        "corev1api.h": "c",
+        "condition_variable": "cpp",
+        "mutex": "cpp"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
 }
