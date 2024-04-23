@@ -150,6 +150,14 @@ namespace driver
         return true;
     }
 
+    std::string JsonFileHandler::cJSONToString(cJSON *json)
+    {
+        char *jsonString = cJSON_Print(json);
+        std::string result(jsonString);
+        free(jsonString);
+        return result;
+    }
+
     cJSON *JsonFileHandler::createConfigFile(const cJSON *inputJson, std::vector<std::string> keys, std::vector<std::vector<std::string>> &patchableKeys)
     {
         cJSON *currentItem = inputJson->child;
@@ -506,7 +514,7 @@ namespace driver
 
             std::string previousConfig = directoryPath + "/" + randomFilePrefix + "_previous.json";
             std::string currentConfig = directoryPath + "/" + randomFilePrefix + "_current.json";
-            std::string permutationList = directoryPath + "/" + randomFilePrefix + "_permutation.json";
+            std::string permutationList = directoryPath + "/" + randomFilePrefix + "_permutation.txt";
 
             // Write the JSON string to a file
             std::ofstream outputFilePrevious(previousConfig);

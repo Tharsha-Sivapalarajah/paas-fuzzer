@@ -194,9 +194,82 @@ namespace scheduler
                     return false;
                 }
             }
+            else
+            {
+                std::cout << "Expecting your running machine to have kubectl installed and have access to the cluster" << std::endl;
+                driver::JsonFileHandler jfh;
+                std::string jsonStr = jfh.cJSONToString(jsonData);
+
+                // Run kubectl apply command with the JSON manifest
+                FILE *pipe = popen("kubectl apply -f -", "w");
+                if (!pipe)
+                {
+                    std::cerr << "popen() failed!" << std::endl;
+                    return 1;
+                }
+
+                // Write JSON string to the pipe
+                fwrite(jsonStr.c_str(), 1, jsonStr.size(), pipe);
+                fflush(pipe);
+
+                // Close the pipe
+                int status = pclose(pipe);
+                if (status == -1)
+                {
+                    std::cerr << "pclose() failed!" << std::endl;
+                    return 1;
+                }
+
+                // Check termination status of the command
+                if (WIFEXITED(status))
+                {
+                    int exitStatus = WEXITSTATUS(status);
+                    std::cout << "Command executed with exit status: " << exitStatus << std::endl;
+                }
+                else
+                {
+                    std::cerr << "Command terminated abnormally!" << std::endl;
+                    return 1;
+                }
+            }
         }
 
         return true;
+    }
+
+    bool ClusterAccess::patchCustom(cJSON **jsonData, char *_namespace, driver::Patch &patch, int verbose) const
+    {
+        driver::JsonFileHandler fileHandler;
+        fileHandler.modifyPatch(*jsonData, patch);
+        cJSON *copiedObject = cJSON_Duplicate(*jsonData, 1);
+
+        std::string jsonStr = fileHandler.cJSONToString(copiedObject);
+
+        FILE *pipe = popen("kubectl apply -f -", "w");
+        if (!pipe)
+        {
+            std::cerr << "popen() failed!" << std::endl;
+            return false;
+        }
+
+        fwrite(jsonStr.c_str(), 1, jsonStr.size(), pipe);
+        fflush(pipe);
+
+        int status = pclose(pipe);
+        if (status == -1)
+        {
+            std::cerr << "pclose() failed!" << std::endl;
+            return false;
+        }
+
+        if (WIFEXITED(status))
+        {
+            int exitStatus = WEXITSTATUS(status);
+            return true;
+        }
+
+        cJSON_Delete(copiedObject);
+        return false;
     }
 
     // patch the existing Deployment
@@ -269,7 +342,7 @@ namespace scheduler
                 }
                 else
                 {
-                    std::cout << "Patch Deplyoment failed" << std::endl;
+                    std::cout << "Patch Deployment failed" << std::endl;
                     return false;
                 }
             }
@@ -283,6 +356,19 @@ namespace scheduler
                 else
                 {
                     std::cout << "Patch Pod failed" << std::endl;
+                    return false;
+                }
+            }
+            else
+            {
+                if (patchCustom(jsonData, const_cast<char *>(_namespace.c_str()), patch, verbose))
+                {
+                    std::cout << "Custom Patch Successful" << std::endl;
+                    return true;
+                }
+                else
+                {
+                    std::cout << "Patch failed" << std::endl;
                     return false;
                 }
             }
