@@ -83,7 +83,7 @@ void updatePatches(std::vector<driver::Patch> &patches, scheduler::ClusterAccess
             cJSON *previousConfig = cJSON_Parse(cJSON_Print(initialConfig));
             auto startTime = std::chrono::high_resolution_clock::now();
             clusterAccess.patch(&initialConfig, apiClient, "default", patch, verbose);
-            bool isBuggyPatch = false;
+            int bugDetectionCount = 10;
             while (!clusterAccess.isPropagationComplete(initialConfig, patch, verbose))
             {
                 auto endTime = std::chrono::high_resolution_clock::now();
@@ -98,17 +98,27 @@ void updatePatches(std::vector<driver::Patch> &patches, scheduler::ClusterAccess
 
                 if (clusterAccess.bugExists(initialConfig, apiClient, "default", verbose))
                 {
-                    jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
-                    clusterAccess.reset(previousConfig, NULL, "default", verbose);
-                    goto exitOuterLoop;
+                    if (bugDetectionCount > 0)
+                        bugDetectionCount--;
+                    else
+                    {
+                        jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
+                        clusterAccess.reset(previousConfig, apiClient, "default", verbose);
+                        goto exitOuterLoop;
+                    }
                 }
             }
 
             if (clusterAccess.bugExists(initialConfig, apiClient, "default", verbose))
             {
-                jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
-                clusterAccess.reset(previousConfig, NULL, "default", verbose);
-                break;
+                if (bugDetectionCount > 0)
+                    bugDetectionCount--;
+                else
+                {
+                    jsonFH.reportBug(previousConfig, initialConfig, patches, patch, verbose);
+                    clusterAccess.reset(previousConfig, apiClient, "default", verbose);
+                    break;
+                }
             }
 
         exitOuterLoop:
@@ -159,6 +169,13 @@ int main(int argc, char *argv[])
         verbose = std::stoi(it->second);
     }
 
+    std::string customPatchFilePath = "";
+    it = arguments.find("custompatch");
+    if (it != arguments.end())
+    {
+        customPatchFilePath = it->second;
+    }
+
     driver::JsonFileHandler fileHandler;
     driver::ConfigGenerator configGenerator;
     printf("-----------------------------------------\n");
@@ -181,6 +198,13 @@ int main(int argc, char *argv[])
     std::vector<driver::Patch> patches = {};
 
     std::vector<std::vector<std::string>> patchableKeys = {};
+
+    // if (customPatchFilePath != "")
+    // {
+    //     cJSON *customPatchJson = fileHandler.createJSONObject(customPatchFilePath.c_str());
+    //     configGenerator.createCustomPatch(customPatchJson, patches, verbose);
+    // }
+
     fileHandler.createConfigFile(inputJson, {}, patchableKeys);
     // std::cout << "AS" << std::endl;
     configGenerator.createPatches(inputJson, patchableKeys, patches, verbose);
@@ -217,3 +241,34 @@ int main(int argc, char *argv[])
     cJSON_Delete(originalJson);
     return 0;
 }
+
+// int main()
+// {
+//     char *basePath = NULL;
+//     sslConfig_t *sslConfig = NULL;
+//     list_t *apiKeys = NULL;
+//     int rc = load_kube_config(&basePath, &sslConfig, &apiKeys, NULL); /* NULL means loading configuration from $HOME/.kube/config */
+//     if (rc != 0)
+//     {
+//         printf("Cannot load kubernetes configuration.\n");
+//         return -1;
+//     }
+//     apiClient_t *apiClient = apiClient_create_with_base_path(basePath, sslConfig, apiKeys);
+//     if (!apiClient)
+//     {
+//         printf("Cannot create a kubernetes client.\n");
+//         return -1;
+//     }
+
+//     v1_status_t *deploymentDeleteStatus = AppsV1API_deleteNamespacedDeployment(apiClient, "busybox-deployment", "default", NULL, NULL, 0, 0, NULL, NULL);
+//     printf("Delete Status code: %ld\n", apiClient->response_code);
+//     v1_status_free(deploymentDeleteStatus);
+
+//     apiClient_free(apiClient);
+//     apiClient = NULL;
+//     free_client_config(basePath, sslConfig, apiKeys);
+//     basePath = NULL;
+//     sslConfig = NULL;
+//     apiKeys = NULL;
+//     apiClient_unsetupGlobalEnv();
+// }

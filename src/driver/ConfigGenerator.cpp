@@ -186,4 +186,35 @@ namespace driver
         printf("------------------------------------------\n");
     }
 
+    void generateCustomPatch(cJSON *patchJson, std::vector<driver::Patch> &patches)
+    {
+        std::vector<std::string> keys = {};
+
+        cJSON *currentItem = patchJson->child;
+        keys.push_back(currentItem->string);
+
+        while (strcmp(currentItem->string, "operation") != 0)
+        {
+            std::cout << currentItem->string << std::endl;
+            currentItem = currentItem->child;
+            keys.push_back(currentItem->string);
+        }
+
+        std::string type = currentItem->next->valuestring;
+
+        std::cout << currentItem->next->next->child->string << std::endl;
+    }
+
+    void ConfigGenerator::createCustomPatch(cJSON *customPatchJson, std::vector<driver::Patch> &patches, int verbose)
+    {
+        cJSON *currentItem = customPatchJson->child;
+        std::vector<std::string> keys = {};
+
+        while (currentItem != NULL)
+        {
+            generateCustomPatch(currentItem, patches);
+            currentItem = currentItem->next;
+        }
+    }
+
 }

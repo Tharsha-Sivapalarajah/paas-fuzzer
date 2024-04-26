@@ -49,14 +49,25 @@ namespace scheduler
         }
 
         v1_deployment_t *deploymentInfo = v1_deployment_parseFromJSON(jsonData);
+        std::chrono::milliseconds sleepDuration(1000);
 
-        v1_status_t *deploymentDeleteStatus = AppsV1API_deleteNamespacedDeployment(apiClient, deploymentInfo->metadata->name, _namespace, NULL, NULL, 0, 0, NULL, NULL);
-
-        // printf("Status code: %ld\n", apiClient->response_code);
-        v1_status_free(deploymentDeleteStatus);
+        int counter = 10;
+        do
+        {
+            v1_status_t *deploymentDeleteStatus = AppsV1API_deleteNamespacedDeployment(apiClient, deploymentInfo->metadata->name, "default", NULL, NULL, 0, 0, NULL, NULL);
+            // std::cout << deploymentInfo->metadata->name << std::endl;
+            // printf("Delete Status code: %ld\n", apiClient->response_code);
+            // std::cout << apiClient->dataReceived << std::endl;
+            v1_status_free(deploymentDeleteStatus);
+            if (apiClient->response_code == 200 || apiClient->response_code == 201)
+            {
+                v1_deployment_free(deploymentInfo);
+                return true;
+            }
+            counter--;
+            std::this_thread::sleep_for(sleepDuration);
+        } while (counter > 0);
         v1_deployment_free(deploymentInfo);
-        if (apiClient->response_code == 200)
-            return true;
         return false;
     }
 
@@ -438,7 +449,9 @@ namespace scheduler
         int desiredReplicaCount = cJSON_GetObjectItem(cJSON_GetObjectItem(initialConfig, "spec"), "replicas")->valueint;
 
         char fieldSelector[100] = "status.phase=Running";
-        bool loopBreaker = false;
+        bool loopBreaker = true;
+        int difference = 0;
+        int counter = 10;
         do
         {
             previous_pod_count = current_pod_count;
@@ -469,63 +482,55 @@ namespace scheduler
                 pod_list_all = CoreV1API_listNamespacedPod(apiClient,
                                                            const_cast<char *>(_namespace.c_str()), /*namespace */
                                                            NULL,                                   /* pretty */
-                                                           0,                                      /* allowWatchBookmarks */
+                                                           NULL,                                   /* allowWatchBookmarks */
                                                            NULL,                                   /* continue */
                                                            NULL,                                   /* fieldSelector */
                                                            NULL,                                   /* labelSelector */
-                                                           0,                                      /* limit */
+                                                           NULL,                                   /* limit */
                                                            NULL,                                   /* resourceVersion */
                                                            NULL,                                   /* resourceVersionMatch */
-                                                           0,                                      /* sendInitialEvents */
-                                                           0,                                      /* timeoutSeconds */
-                                                           0                                       /* watch */
+                                                           NULL,                                   /* sendInitialEvents */
+                                                           NULL,                                   /* timeoutSeconds */
+                                                           NULL                                    /* watch */
                 );
             } while (pod_list_all == NULL);
-            current_pod_count_all = pod_list->items->count;
+            current_pod_count_all = pod_list_all->items->count;
+
+            // if exponentially creating pods
+            if (difference < current_pod_count_all - current_pod_count || current_pod_count_all != current_pod_count)
+            {
+                difference = current_pod_count_all - current_pod_count;
+                if (counter <= 0)
+                {
+                    printf("Resource bug detected with exponential pod creation\n");
+                    // resource bugs detected
+                    return true;
+                }
+                else
+                    counter--;
+                std::this_thread::sleep_for(sleepDuration);
+                pod_list = NULL;
+                pod_list_all = NULL;
+                // std::cout << counter << std::endl;
+                continue;
+            }
 
             if (desiredReplicaCount != current_pod_count)
             {
-                if (current_pod_count_all != current_pod_count)
+                if (counter <= 0)
                 {
-                    if (loop > 10)
-                    {
-                        loopBreaker = true;
-                    }
+                    printf("Resource bug detected with desired and actual pod count mismatch\n");
+                    // resource bugs detected
+                    return true;
                 }
                 else
-                {
-                    loop++;
-                }
+                    counter--;
+                std::this_thread::sleep_for(sleepDuration);
             }
             else
-            {
-                loopBreaker = true;
-            }
-        } while (!loopBreaker);
-
-        std::cout << desiredReplicaCount << ":" << current_pod_count_all << ":" << current_pod_count << std::endl;
-
-        auto startTime = std::chrono::high_resolution_clock::now();
-
-        while (current_pod_count_all != current_pod_count)
-        {
-            std::chrono::milliseconds sleepDuration(2000);
-            std::this_thread::sleep_for(sleepDuration);
-            auto endTime = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-
-            if (duration.count() > driver::WAIT_TIME_MILLI_SEC)
-            {
-                break;
-            }
-        }
-
-        if ((desiredReplicaCount != current_pod_count) || (current_pod_count_all != current_pod_count))
-        {
-            printf("Resource bug detected\n");
-            // resource bugs detected
-            return true;
-        }
+                loopBreaker = false;
+            std::cout << desiredReplicaCount << ":" << current_pod_count_all << ":" << current_pod_count << std::endl;
+        } while (loopBreaker);
 
         // -> check the initial config file values with deployment values
 
@@ -586,6 +591,7 @@ namespace scheduler
         {
             if (this->createDeployment(apiClient, initialConfig, const_cast<char *>(_namespace.c_str()), verbose))
             {
+                // std::cout << cJSON_Print(initialConfig) << std::endl;
                 return true;
             }
             count++;
@@ -666,16 +672,16 @@ namespace scheduler
             pod_list_all = CoreV1API_listNamespacedPod(apiClient,
                                                        _namespace, /*namespace */
                                                        NULL,       /* pretty */
-                                                       0,          /* allowWatchBookmarks */
+                                                       NULL,       /* allowWatchBookmarks */
                                                        NULL,       /* continue */
                                                        NULL,       /* fieldSelector */
                                                        NULL,       /* labelSelector */
-                                                       0,          /* limit */
+                                                       NULL,       /* limit */
                                                        NULL,       /* resourceVersion */
                                                        NULL,       /* resourceVersionMatch */
-                                                       0,          /* sendInitialEvents */
-                                                       0,          /* timeoutSeconds */
-                                                       0           /* watch */
+                                                       NULL,       /* sendInitialEvents */
+                                                       NULL,       /* timeoutSeconds */
+                                                       NULL        /* watch */
             );
         } while (pod_list_all == NULL);
 
