@@ -85,6 +85,8 @@ namespace driver
 
         bool isPatchIncluded(cJSON *jsonData, Patch &patch, int verbose) const;
 
+        std::string cJSONToString(cJSON *json);
+
     private:
         static bool bugReportDirectoryCreated;
 

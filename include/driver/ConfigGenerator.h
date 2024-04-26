@@ -23,6 +23,7 @@ namespace driver
     {
     public:
         void createPatches(cJSON *inputFile, std::vector<std::vector<std::string>> &patchableKeys, std::vector<driver::Patch> &patches, int verbose);
+        void createCustomPatch(cJSON *customPatchJson, std::vector<driver::Patch> &patches, int verbose);
     };
 
 }

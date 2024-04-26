@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <thread>
 #include <chrono>
+#include <cstdlib>
 
 #include <json/json.h>
 extern "C"
@@ -44,6 +45,7 @@ namespace scheduler
         bool bugExists(cJSON *initialConfig, apiClient_t *apiClient, std::string _namespace, int verbose) const;
         bool reset(cJSON *initialConfig, apiClient_t *apiClient, std::string _namespace, int verbose) const;
         bool createAPI_client(apiClient_t **apiClient) const;
+        bool patchCustom(cJSON **jsonData, char *_namespace, driver::Patch &patch, int verbose) const;
 
     private:
         bool deletePod(apiClient_t *apiClient, cJSON *jsonData, char *namespc, int verbose) const;
